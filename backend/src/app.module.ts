@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { BoqModule } from './boq/boq.module';
 import { HealthController } from './health/health.controller';
+import { InventoryModule } from './inventory/inventory.module';
+import { MaterialsModule } from './materials/materials.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 
@@ -25,6 +28,9 @@ import { ProjectsModule } from './projects/projects.module';
     }),
     PrismaModule,
     ProjectsModule,
+    BoqModule,
+    MaterialsModule,
+    InventoryModule,
   ],
   controllers: [HealthController],
   providers: [
