@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.gitignore
+**/*.log
+docker-compose.yml
+README.md
+Mini_CMS_Team_Implementation_Plan.md

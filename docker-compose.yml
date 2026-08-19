@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cms_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cms_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cms_user} -d ${POSTGRES_DB:-cms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - cms_network
+
+  backend:
+    build:
+      # Root context: the npm workspace lockfile lives at the repo root.
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: cms_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://cms_user:cms_password@postgres:5432/cms_db?schema=public}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-120}
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    networks:
+      - cms_network
+
+  # The frontend is owned by the frontend lead and has no Dockerfile yet.
+  # It sits behind a compose profile so `docker compose up -d` keeps working
+  # for everyone until `frontend/Dockerfile` lands. Start it explicitly with:
+  #   docker compose --profile frontend up -d
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cms_frontend
+    restart: unless-stopped
+    profiles:
+      - frontend
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - cms_network
+
+volumes:
+  postgres_data:
+    name: cms_postgres_data
+
+networks:
+  cms_network:
+    name: cms_network
+    driver: bridge
