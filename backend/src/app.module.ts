@@ -7,6 +7,7 @@ import { HealthController } from './health/health.controller';
 import { InventoryModule } from './inventory/inventory.module';
 import { MaterialsModule } from './materials/materials.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProgressModule } from './progress/progress.module';
 import { ProjectsModule } from './projects/projects.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { ProjectsModule } from './projects/projects.module';
     BoqModule,
     MaterialsModule,
     InventoryModule,
+    ProgressModule,
   ],
   controllers: [HealthController],
   providers: [
