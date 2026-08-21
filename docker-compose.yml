@@ -43,18 +43,13 @@ services:
     networks:
       - cms_network
 
-  # The frontend is owned by the frontend lead and has no Dockerfile yet.
-  # It sits behind a compose profile so `docker compose up -d` keeps working
-  # for everyone until `frontend/Dockerfile` lands. Start it explicitly with:
-  #   docker compose --profile frontend up -d
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # Root context: the npm workspace lockfile lives at the repo root.
+      context: .
+      dockerfile: ./frontend/Dockerfile
     container_name: cms_frontend
     restart: unless-stopped
-    profiles:
-      - frontend
     depends_on:
       - backend
     environment:

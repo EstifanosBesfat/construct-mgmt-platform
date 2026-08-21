@@ -15,6 +15,7 @@ RUN npm ci --include-workspace-root --workspace backend
 
 COPY backend ./backend
 RUN npm run db:generate --workspace backend
+RUN npx tsc backend/prisma/seed.ts --outDir backend/dist/prisma --module CommonJS --target ES2020 --moduleResolution node --skipLibCheck
 RUN npm run build --workspace backend
 
 # ---------- Stage 2: runtime ----------

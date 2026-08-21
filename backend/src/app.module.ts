@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BoqModule } from './boq/boq.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health/health.controller';
 import { InventoryModule } from './inventory/inventory.module';
 import { MaterialsModule } from './materials/materials.module';
@@ -33,6 +34,7 @@ import { ProjectsModule } from './projects/projects.module';
     MaterialsModule,
     InventoryModule,
     ProgressModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [
