@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CommandMenu } from '@/components/layout/command-menu';
+import { NotificationPopover } from '@/components/layout/notification-popover';
 import { useRouter } from 'next/navigation';
 import { useDashboardSummary } from '@/hooks/use-dashboard';
 
@@ -75,17 +76,8 @@ export function Navbar({
 
         {/* Right: Actions, Theme Toggle & Quick Add */}
         <div className="flex items-center space-x-2.5">
-          {/* Notifications Bell */}
-          <button
-            onClick={() => router.push('/materials')}
-            className="relative rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title={lowStockCount > 0 ? `${lowStockCount} materials low on stock` : 'No new alerts'}
-          >
-            <Bell className="h-4 w-4" />
-            {lowStockCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-background animate-pulse" />
-            )}
-          </button>
+          {/* Notifications Popover */}
+          <NotificationPopover onOpenStockIn={onOpenStockIn} />
 
           {/* Theme Toggle */}
           {mounted && (
