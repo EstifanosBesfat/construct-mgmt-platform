@@ -34,7 +34,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { useDashboardSummary } from '@/hooks/use-dashboard';
-import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatDate, getStatusBadgeClass } from '@/lib/utils';
 import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 import { StockInDialog } from '@/components/inventory/stock-in-dialog';
 import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
@@ -205,8 +205,16 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-extrabold text-foreground truncate">
-              {formatCurrency(totalPortfolioBudget)}
+            <div
+              className="flex items-baseline flex-wrap gap-x-1.5"
+              title={formatCurrency(totalPortfolioBudget)}
+            >
+              <span className="text-xl sm:text-lg md:text-xl xl:text-2xl font-extrabold text-foreground tracking-tight">
+                {formatNumber(totalPortfolioBudget, 2)}
+              </span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                ETB
+              </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Combined value of all projects
@@ -226,8 +234,16 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-extrabold text-foreground truncate">
-              {formatCurrency(totalPortfolioBoq)}
+            <div
+              className="flex items-baseline flex-wrap gap-x-1.5"
+              title={formatCurrency(totalPortfolioBoq)}
+            >
+              <span className="text-xl sm:text-lg md:text-xl xl:text-2xl font-extrabold text-foreground tracking-tight">
+                {formatNumber(totalPortfolioBoq, 2)}
+              </span>
+              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md">
+                ETB
+              </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Sum of measured rate items

@@ -18,6 +18,23 @@ export function formatCurrency(value: number | string | null | undefined, curren
   })} ${currency}`;
 }
 
+export function formatCompactCurrency(value: number | string | null | undefined, currency: string = 'ETB'): string {
+  if (value === null || value === undefined || isNaN(Number(value))) {
+    return '0 ' + currency;
+  }
+  const num = Number(value);
+  if (Math.abs(num) >= 1_000_000_000) {
+    return `${(num / 1_000_000_000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}B ${currency}`;
+  }
+  if (Math.abs(num) >= 1_000_000) {
+    return `${(num / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}M ${currency}`;
+  }
+  if (Math.abs(num) >= 1_000) {
+    return `${(num / 1_000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}k ${currency}`;
+  }
+  return formatCurrency(value, currency);
+}
+
 export function formatNumber(value: number | string | null | undefined, decimals: number = 2): string {
   if (value === null || value === undefined || isNaN(Number(value))) {
     return '0';
