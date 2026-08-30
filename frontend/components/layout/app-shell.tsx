@@ -3,31 +3,59 @@
 import * as React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Navbar } from '@/components/layout/navbar';
-import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 import { StockInDialog } from '@/components/inventory/stock-in-dialog';
-import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
-import { ProgressFormDialog } from '@/components/progress/progress-form-dialog';
+
+const SIDEBAR_COLLAPSED_KEY = 'cms-sidebar-collapsed';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [newProjectOpen, setNewProjectOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(false);
   const [stockInOpen, setStockInOpen] = React.useState(false);
-  const [stockOutOpen, setStockOutOpen] = React.useState(false);
-  const [logProgressOpen, setLogProgressOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true') {
+        setCollapsed(true);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const toggleCollapsed = React.useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleSidebar = React.useCallback(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      toggleCollapsed();
+      return;
+    }
+    setMobileOpen((open) => !open);
+  }, [toggleCollapsed]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={mobileOpen}
+        collapsed={collapsed}
+        onClose={() => setMobileOpen(false)}
+        onToggle={handleToggleSidebar}
+      />
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
         <Navbar
-          onOpenSidebar={() => setSidebarOpen(true)}
-          onOpenNewProject={() => setNewProjectOpen(true)}
+          onToggleSidebar={handleToggleSidebar}
+          sidebarCollapsed={collapsed}
           onOpenStockIn={() => setStockInOpen(true)}
-          onOpenStockOut={() => setStockOutOpen(true)}
-          onOpenLogProgress={() => setLogProgressOpen(true)}
         />
 
         <main className="flex-1 overflow-y-auto p-4 lg:px-6 lg:py-4 w-full animate-fade-in">
@@ -35,22 +63,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Global Quick Action Modals */}
-      <ProjectFormDialog
-        isOpen={newProjectOpen}
-        onClose={() => setNewProjectOpen(false)}
-      />
       <StockInDialog
         isOpen={stockInOpen}
         onClose={() => setStockInOpen(false)}
-      />
-      <StockOutDialog
-        isOpen={stockOutOpen}
-        onClose={() => setStockOutOpen(false)}
-      />
-      <ProgressFormDialog
-        isOpen={logProgressOpen}
-        onClose={() => setLogProgressOpen(false)}
       />
     </div>
   );
