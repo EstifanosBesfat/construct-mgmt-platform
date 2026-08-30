@@ -62,11 +62,14 @@ export interface BoqItem {
 export interface BoqSummary {
   projectId: string;
   itemCount: number;
-  totalBoqValue: number;
+  totalValue: number;
+  /** Alias kept for existing UI call sites; same value as totalValue. */
+  totalBoqValue?: number;
 }
 
 export interface BoqList {
-  items: BoqItem[];
+  data: BoqItem[];
+  items?: BoqItem[];
   summary: BoqSummary;
 }
 
@@ -254,7 +257,8 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
-    pageCount: number;
+    totalPages: number;
+    pageCount?: number;
     hasPreviousPage: boolean;
     hasNextPage: boolean;
   };

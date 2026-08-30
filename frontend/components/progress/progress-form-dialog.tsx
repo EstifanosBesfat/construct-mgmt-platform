@@ -155,7 +155,7 @@ export function ProgressFormDialog({
               <label className="text-xs font-semibold text-foreground">
                 Progress Percentage *
               </label>
-              <span className="text-xs font-bold text-amber-500">
+              <span className="text-xs font-bold text-sky-500">
                 {currentPercentage}%
               </span>
             </div>
@@ -167,7 +167,7 @@ export function ProgressFormDialog({
                 step="1"
                 value={currentPercentage}
                 onChange={(e) => setValue('percentage', Number(e.target.value))}
-                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-amber-500"
+                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-sky-500"
               />
               <Input
                 type="number"

@@ -122,13 +122,13 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
       {/* Bell Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+        className="relative rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
         <Bell className="h-4 w-4" />
         {unreadAlertsCount > 0 ? (
-          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-slate-950 shadow-sm animate-pulse">
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-slate-950 shadow-sm animate-pulse">
             {unreadAlertsCount}
           </span>
         ) : totalUnreadCount > 0 ? (
@@ -157,7 +157,7 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
             {totalUnreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-[11px] font-medium text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 flex items-center space-x-1"
+                className="text-[11px] font-medium text-sky-500 hover:text-sky-600 dark:hover:text-sky-400 flex items-center space-x-1"
               >
                 <Check className="h-3 w-3" />
                 <span>Mark all read</span>
@@ -181,13 +181,13 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
               onClick={() => setActiveTab('alerts')}
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1 ${
                 activeTab === 'alerts'
-                  ? 'bg-background text-amber-500 shadow-sm'
+                  ? 'bg-background text-sky-500 shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <span>Low Stock</span>
               {alertNotifications.length > 0 && (
-                <span className="h-4 w-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] flex items-center justify-center font-bold">
+                <span className="h-4 w-4 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400 text-[10px] flex items-center justify-center font-bold">
                   {alertNotifications.length}
                 </span>
               )}
@@ -224,13 +224,13 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
                   <div
                     key={item.id}
                     className={`group relative p-3.5 transition-colors hover:bg-muted/50 flex items-start space-x-3 ${
-                      !isRead ? 'bg-amber-500/[0.03]' : ''
+                      !isRead ? 'bg-sky-500/[0.03]' : ''
                     }`}
                   >
                     {/* Icon Column */}
                     <div className="mt-0.5 flex-shrink-0">
                       {item.type === 'alert' && (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/15 text-sky-500 border border-sky-500/30">
                           <AlertTriangle className="h-4 w-4" />
                         </div>
                       )}
@@ -267,7 +267,7 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
                               setIsOpen(false);
                               onOpenStockIn();
                             }}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors shadow-sm"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-500 text-slate-950 hover:bg-sky-400 transition-colors shadow-sm"
                           >
                             <ArrowDownLeft className="h-3 w-3 mr-1" />
                             Stock-In
@@ -289,7 +289,7 @@ export function NotificationPopover({ onOpenStockIn }: NotificationPopoverProps)
 
                     {/* Unread indicator dot */}
                     {!isRead && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-500 flex-shrink-0 mt-1.5" />
                     )}
                   </div>
                 );

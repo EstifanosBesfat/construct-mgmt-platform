@@ -6,17 +6,12 @@ import {
   Building2,
   Plus,
   Search,
-  MoreVertical,
   Pencil,
   Trash2,
   ExternalLink,
   Calendar,
-  DollarSign,
-  ChevronLeft,
-  ChevronRight,
-  Filter,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +19,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 import { useProjects, useDeleteProject } from '@/hooks/use-projects';
+import { ColumnDef } from '@tanstack/react-table';
 import { Project, ProjectStatus } from '@/types';
-import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/utils';
+import { formatCurrency, formatDate, getStatusBadgeClass, getPageCount } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
+import { DataTable } from '@/components/ui/data-table';
 
 export default function ProjectsPage() {
   const [search, setSearch] = React.useState('');
@@ -49,6 +46,114 @@ export default function ProjectsPage() {
 
   const projects = projectsData?.data ?? [];
   const meta = projectsData?.meta;
+  const pageCount = getPageCount(meta);
+
+  const columns = React.useMemo<ColumnDef<Project>[]>(
+    () => [
+      {
+        accessorKey: 'code',
+        header: 'Code',
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-xs text-sky-500">
+            {row.original.code}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'name',
+        header: 'Project Name & Client',
+        cell: ({ row }) => (
+          <div>
+            <Link
+              href={`/projects/${row.original.id}`}
+              className="font-bold text-foreground hover:text-sky-500 hover:underline"
+            >
+              {row.original.name}
+            </Link>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Client: {row.original.clientName}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'location',
+        header: 'Location',
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">{row.original.location}</span>
+        ),
+      },
+      {
+        accessorKey: 'startDate',
+        header: 'Timeline',
+        cell: ({ row }) => (
+          <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span>
+              {formatDate(row.original.startDate)} → {formatDate(row.original.endDate)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'budget',
+        header: 'Budget',
+        cell: ({ row }) => (
+          <span className="text-xs font-semibold text-foreground">
+            {formatCurrency(row.original.budget)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <Badge variant="outline" className={getStatusBadgeClass(row.original.status)}>
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end space-x-1.5">
+            <Link href={`/projects/${row.original.id}`}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-sky-500"
+                title="View Project Detail"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setEditingProject(row.original)}
+              className="h-8 w-8 text-muted-foreground hover:text-blue-500"
+              title="Edit Project"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeletingProjectId(row.original.id)}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              title="Delete Project"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   const handleDeleteConfirm = async () => {
     if (!deletingProjectId) return;
@@ -57,11 +162,10 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
+    <div className="space-y-4">
       <PageHeader
-        title="Project Management"
-        description="Create, monitor, and manage construction projects across all phases."
+        title="Projects"
+        description="Create and manage construction projects."
         actions={
           <Button
             variant="amber"
@@ -152,7 +256,7 @@ export default function ProjectsPage() {
               ))}
             </div>
           ) : projects.length === 0 ? (
-            <div className="text-center py-16 px-4">
+            <div className="text-center py-8 px-4">
               <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <h3 className="text-base font-bold text-foreground">No projects found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -173,133 +277,22 @@ export default function ProjectsPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase text-muted-foreground bg-muted/40 border-b border-border">
-                  <tr>
-                    <th className="px-4 py-3.5 font-semibold">Code</th>
-                    <th className="px-4 py-3.5 font-semibold">Project Name & Client</th>
-                    <th className="px-4 py-3.5 font-semibold">Location</th>
-                    <th className="px-4 py-3.5 font-semibold">Timeline</th>
-                    <th className="px-4 py-3.5 font-semibold">Budget</th>
-                    <th className="px-4 py-3.5 font-semibold">Status</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {projects.map((project) => (
-                    <tr
-                      key={project.id}
-                      className="hover:bg-muted/30 transition-colors group"
-                    >
-                      <td className="px-4 py-3.5 font-mono font-bold text-xs text-amber-500">
-                        {project.code}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <Link
-                          href={`/projects/${project.id}`}
-                          className="font-bold text-foreground hover:text-amber-500 hover:underline"
-                        >
-                          {project.name}
-                        </Link>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Client: {project.clientName}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {project.location}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span>
-                            {formatDate(project.startDate)} → {formatDate(project.endDate)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs font-semibold text-foreground">
-                        {formatCurrency(project.budget)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <Badge
-                          variant="outline"
-                          className={getStatusBadgeClass(project.status)}
-                        >
-                          {project.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end space-x-1.5">
-                          <Link href={`/projects/${project.id}`}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-amber-500"
-                              title="View Project Detail"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingProject(project)}
-                            className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-                            title="Edit Project"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingProjectId(project.id)}
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Delete Project"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {meta && meta.pageCount > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs">
-              <span className="text-muted-foreground">
-                Showing {((meta.page - 1) * meta.limit) + 1} to{' '}
-                {Math.min(meta.page * meta.limit, meta.total)} of {meta.total} projects
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasPreviousPage}
-                  onClick={() => setPage(page - 1)}
-                  className="h-8 px-2.5"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <span className="font-semibold text-foreground px-2">
-                  Page {meta.page} of {meta.pageCount}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasNextPage}
-                  onClick={() => setPage(page + 1)}
-                  className="h-8 px-2.5"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
+            <DataTable
+              columns={columns}
+              data={projects}
+              getRowId={(project) => project.id}
+              pagination={
+                meta
+                  ? {
+                      page,
+                      pageCount,
+                      total: meta.total,
+                      pageSize: meta.limit,
+                      onPageChange: setPage,
+                    }
+                  : undefined
+              }
+            />
           )}
         </CardContent>
       </Card>

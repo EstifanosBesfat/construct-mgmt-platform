@@ -46,27 +46,43 @@ const STATUS_COLORS = {
 };
 
 export default function DashboardPage() {
-  const { data: summary, isLoading } = useDashboardSummary();
+  const { data: summary, isLoading, isError } = useDashboardSummary();
   const [newProjectOpen, setNewProjectOpen] = React.useState(false);
   const [stockInOpen, setStockInOpen] = React.useState(false);
   const [stockOutOpen, setStockOutOpen] = React.useState(false);
 
-  if (isLoading || !summary) {
+  if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader
-          title="Executive Dashboard"
-          description="Real-time construction project metrics, BOQ summaries, and inventory movements."
+          title="Dashboard"
+          description="Projects, inventory, and progress at a glance."
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-80 lg:col-span-2 rounded-2xl" />
-          <Skeleton className="h-80 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-64 lg:col-span-2 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError || !summary) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="Dashboard"
+          description="Projects, inventory, and progress at a glance."
+        />
+        <Card className="glass-panel">
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            Dashboard data could not be loaded. Check that the API is running on port 4000.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -98,11 +114,10 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-8">
-      {/* Top Header */}
+    <div className="space-y-4">
       <PageHeader
-        title="Executive Dashboard"
-        description="Comprehensive overview of projects, BOQ values, material inventory, and field progress."
+        title="Dashboard"
+        description="Projects, inventory, and progress at a glance."
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -137,7 +152,7 @@ export default function DashboardPage() {
       />
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Projects */}
         <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
           <div className="absolute top-0 right-0 h-24 w-24 bg-blue-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
@@ -150,7 +165,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-extrabold text-foreground">
+            <div className="text-2xl font-bold text-foreground">
               {projects.total}
             </div>
             <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
@@ -167,22 +182,22 @@ export default function DashboardPage() {
 
         {/* Card 2: Materials & Inventory */}
         <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-24 w-24 bg-amber-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+          <div className="absolute top-0 right-0 h-24 w-24 bg-sky-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Material Catalogue
             </CardTitle>
-            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-500">
+            <div className="p-2 rounded-xl bg-sky-500/15 text-sky-500">
               <Boxes className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-extrabold text-foreground">
+            <div className="text-2xl font-bold text-foreground">
               {inventory.totalMaterials}
             </div>
             <div className="mt-2 flex items-center space-x-2 text-xs">
               {inventory.lowStockCount > 0 ? (
-                <span className="inline-flex items-center font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   {inventory.lowStockCount} below minimum
                 </span>
@@ -209,7 +224,7 @@ export default function DashboardPage() {
               className="flex items-baseline flex-wrap gap-x-1.5"
               title={formatCurrency(totalPortfolioBudget)}
             >
-              <span className="text-xl sm:text-lg md:text-xl xl:text-2xl font-extrabold text-foreground tracking-tight">
+              <span className="text-xl font-bold text-foreground tracking-tight">
                 {formatNumber(totalPortfolioBudget, 2)}
               </span>
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
@@ -238,7 +253,7 @@ export default function DashboardPage() {
               className="flex items-baseline flex-wrap gap-x-1.5"
               title={formatCurrency(totalPortfolioBoq)}
             >
-              <span className="text-xl sm:text-lg md:text-xl xl:text-2xl font-extrabold text-foreground tracking-tight">
+              <span className="text-xl font-bold text-foreground tracking-tight">
                 {formatNumber(totalPortfolioBoq, 2)}
               </span>
               <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md">
@@ -253,20 +268,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Visual Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Budget vs BOQ Value Bar Chart */}
         <Card className="lg:col-span-2 glass-panel border-border/80">
           <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center justify-between">
-              <span>Budget vs. BOQ Value Comparison</span>
-              <span className="text-xs font-normal text-muted-foreground">Top Projects</span>
+            <CardTitle className="text-sm font-semibold flex items-center justify-between">
+              <span>Budget vs BOQ</span>
+              <span className="text-xs font-normal text-muted-foreground">Top projects</span>
             </CardTitle>
-            <CardDescription className="text-xs">
-              Direct comparison of authorized project budget against total measured BOQ rate value.
+            <CardDescription>
+              Authorized budget compared with measured BOQ value.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72 w-full">
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={budgetVsBoqData}
@@ -296,13 +311,13 @@ export default function DashboardPage() {
                   <Bar
                     dataKey="budget"
                     name="Authorized Budget"
-                    fill="#3b82f6"
+                    fill="#0284c7"
                     radius={[6, 6, 0, 0]}
                   />
                   <Bar
                     dataKey="boqValue"
                     name="BOQ Total Value"
-                    fill="#f59e0b"
+                    fill="#38bdf8"
                     radius={[6, 6, 0, 0]}
                   />
                 </BarChart>
@@ -315,8 +330,8 @@ export default function DashboardPage() {
         <Card className="glass-panel border-border/80 flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="text-base font-bold flex items-center space-x-2">
-              <PieChartIcon className="h-4 w-4 text-amber-500" />
-              <span>Project Status Distribution</span>
+              <PieChartIcon className="h-4 w-4 text-sky-500" />
+              <span>Project status</span>
             </CardTitle>
             <CardDescription className="text-xs">
               Current project portfolio lifecycle state.
@@ -373,13 +388,13 @@ export default function DashboardPage() {
       <Card className="glass-panel border-border/80">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-bold">Project Performance & Progress</CardTitle>
-            <CardDescription className="text-xs">
-              Live status, budget adherence, and completion percentage for all construction sites.
+            <CardTitle className="text-sm font-semibold">Project performance</CardTitle>
+            <CardDescription>
+              Budget, BOQ value, progress, and status.
             </CardDescription>
           </div>
           <Link href="/projects">
-            <Button variant="ghost" size="sm" className="text-xs text-amber-500 hover:text-amber-600">
+            <Button variant="ghost" size="sm" className="text-xs text-sky-500 hover:text-sky-600">
               View All Projects
               <ArrowRight className="h-3.5 w-3.5 ml-1" />
             </Button>
@@ -408,13 +423,13 @@ export default function DashboardPage() {
                       key={project.id}
                       className="hover:bg-muted/30 transition-colors group"
                     >
-                      <td className="px-4 py-3 font-mono font-bold text-xs text-amber-500">
+                      <td className="px-4 py-3 font-mono font-bold text-xs text-sky-500">
                         {project.code}
                       </td>
                       <td className="px-4 py-3 font-semibold text-foreground">
                         <Link
                           href={`/projects/${project.id}`}
-                          className="hover:underline hover:text-amber-500"
+                          className="hover:underline hover:text-sky-500"
                         >
                           {project.name}
                         </Link>
@@ -449,7 +464,7 @@ export default function DashboardPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs text-muted-foreground group-hover:text-amber-500"
+                            className="h-7 px-2 text-xs text-muted-foreground group-hover:text-sky-500"
                           >
                             Details
                             <ArrowRight className="h-3 w-3 ml-1" />
@@ -466,13 +481,13 @@ export default function DashboardPage() {
       </Card>
 
       {/* Bottom Row: Recent Activity Feeds */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Stock Transactions Feed */}
         <Card className="glass-panel border-border/80">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-base font-bold flex items-center space-x-2">
-                <Boxes className="h-4 w-4 text-amber-500" />
+                <Boxes className="h-4 w-4 text-sky-500" />
                 <span>Recent Inventory Movements</span>
               </CardTitle>
               <CardDescription className="text-xs">
@@ -480,7 +495,7 @@ export default function DashboardPage() {
               </CardDescription>
             </div>
             <Link href="/inventory">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-amber-500">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-sky-500">
                 View History
               </Button>
             </Link>
@@ -550,7 +565,7 @@ export default function DashboardPage() {
               </CardDescription>
             </div>
             <Link href="/progress">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-amber-500">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-sky-500">
                 View Progress
               </Button>
             </Link>
@@ -564,7 +579,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground flex items-center space-x-1.5">
-                      <span className="text-amber-500 font-mono">[{pr.projectCode}]</span>
+                      <span className="text-sky-500 font-mono">[{pr.projectCode}]</span>
                       <span>{pr.projectName}</span>
                     </span>
                     <Badge variant="success" className="font-bold">

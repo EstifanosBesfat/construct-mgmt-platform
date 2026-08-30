@@ -10,22 +10,23 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog } from '@/components/ui/dialog';
+import { ColumnDef } from '@tanstack/react-table';
 import { PageHeader } from '@/components/layout/page-header';
 import { useMaterials, useDeleteMaterial } from '@/hooks/use-materials';
 import { MaterialFormDialog } from '@/components/materials/material-form-dialog';
 import { StockInDialog } from '@/components/inventory/stock-in-dialog';
 import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
 import { MaterialWithStockFlag } from '@/types';
+import { DataTable } from '@/components/ui/data-table';
+import { getPageCount } from '@/lib/utils';
 
 export default function MaterialsPage() {
   const [search, setSearch] = React.useState('');
@@ -52,6 +53,122 @@ export default function MaterialsPage() {
 
   const materials = materialsData?.data ?? [];
   const meta = materialsData?.meta;
+  const pageCount = getPageCount(meta);
+
+  const columns = React.useMemo<ColumnDef<MaterialWithStockFlag>[]>(
+    () => [
+      {
+        accessorKey: 'code',
+        header: 'Code',
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-xs text-sky-500">
+            {row.original.code}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'name',
+        header: 'Material Name',
+        cell: ({ row }) => (
+          <span className="font-semibold text-foreground">{row.original.name}</span>
+        ),
+      },
+      {
+        accessorKey: 'unit',
+        header: 'Unit',
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground font-medium">
+            {row.original.unit}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'currentStock',
+        header: 'Current Stock',
+        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+        cell: ({ row }) => (
+          <span className="text-xs font-bold text-foreground">
+            {row.original.currentStock} {row.original.unit}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'minimumStock',
+        header: 'Min Threshold',
+        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground font-medium">
+            {row.original.minimumStock} {row.original.unit}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'isLowStock',
+        header: 'Stock Status',
+        cell: ({ row }) =>
+          row.original.isLowStock ? (
+            <Badge variant="warning" className="font-bold flex items-center w-fit">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Low Stock
+            </Badge>
+          ) : (
+            <Badge variant="success" className="font-medium flex items-center w-fit">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Healthy
+            </Badge>
+          ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end space-x-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setQuickStockInId(row.original.id)}
+              className="h-7 px-2 text-xs rounded-lg text-emerald-500 hover:bg-emerald-500/10"
+              title="Quick Stock-In"
+            >
+              <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
+              In
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setQuickStockOutId(row.original.id)}
+              className="h-7 px-2 text-xs rounded-lg text-rose-500 hover:bg-rose-500/10"
+              title="Quick Stock-Out"
+            >
+              <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
+              Out
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setEditingMaterial(row.original)}
+              className="h-8 w-8 text-muted-foreground hover:text-blue-500"
+              title="Edit Material"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeletingMaterialId(row.original.id)}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              title="Delete Material"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   const handleDeleteConfirm = async () => {
     if (!deletingMaterialId) return;
@@ -59,14 +176,11 @@ export default function MaterialsPage() {
     setDeletingMaterialId(null);
   };
 
-  const lowStockCount = materials.filter((m) => m.isLowStock).length;
-
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
+    <div className="space-y-4">
       <PageHeader
-        title="Materials & Inventory Catalogue"
-        description="Monitor warehouse stock levels, configure reorder minimums, and track material availability."
+        title="Materials"
+        description="Stock levels and reorder minimums."
         actions={
           <Button
             variant="amber"
@@ -134,7 +248,7 @@ export default function MaterialsPage() {
               ))}
             </div>
           ) : materials.length === 0 ? (
-            <div className="text-center py-16 px-4">
+            <div className="text-center py-8 px-4">
               <Boxes className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <h3 className="text-base font-bold text-foreground">No materials found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -155,135 +269,22 @@ export default function MaterialsPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase text-muted-foreground bg-muted/40 border-b border-border">
-                  <tr>
-                    <th className="px-4 py-3.5 font-semibold">Code</th>
-                    <th className="px-4 py-3.5 font-semibold">Material Name</th>
-                    <th className="px-4 py-3.5 font-semibold">Unit</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Current Stock</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Min Threshold</th>
-                    <th className="px-4 py-3.5 font-semibold">Stock Status</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {materials.map((mat) => (
-                    <tr
-                      key={mat.id}
-                      className="hover:bg-muted/30 transition-colors group"
-                    >
-                      <td className="px-4 py-3.5 font-mono font-bold text-xs text-amber-500">
-                        {mat.code}
-                      </td>
-                      <td className="px-4 py-3.5 font-semibold text-foreground">
-                        {mat.name}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium">
-                        {mat.unit}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-right font-bold text-foreground">
-                        {mat.currentStock} {mat.unit}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-right text-muted-foreground font-medium">
-                        {mat.minimumStock} {mat.unit}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {mat.isLowStock ? (
-                          <Badge variant="warning" className="font-bold flex items-center w-fit">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            Low Stock
-                          </Badge>
-                        ) : (
-                          <Badge variant="success" className="font-medium flex items-center w-fit">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Healthy
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end space-x-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setQuickStockInId(mat.id)}
-                            className="h-7 px-2 text-xs rounded-lg text-emerald-500 hover:bg-emerald-500/10"
-                            title="Quick Stock-In"
-                          >
-                            <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-                            In
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setQuickStockOutId(mat.id)}
-                            className="h-7 px-2 text-xs rounded-lg text-rose-500 hover:bg-rose-500/10"
-                            title="Quick Stock-Out"
-                          >
-                            <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
-                            Out
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingMaterial(mat)}
-                            className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-                            title="Edit Material"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingMaterialId(mat.id)}
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Delete Material"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {meta && meta.pageCount > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs">
-              <span className="text-muted-foreground">
-                Showing {((meta.page - 1) * meta.limit) + 1} to{' '}
-                {Math.min(meta.page * meta.limit, meta.total)} of {meta.total} materials
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasPreviousPage}
-                  onClick={() => setPage(page - 1)}
-                  className="h-8 px-2.5"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <span className="font-semibold text-foreground px-2">
-                  Page {meta.page} of {meta.pageCount}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasNextPage}
-                  onClick={() => setPage(page + 1)}
-                  className="h-8 px-2.5"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
+            <DataTable
+              columns={columns}
+              data={materials}
+              getRowId={(material) => material.id}
+              pagination={
+                meta
+                  ? {
+                      page,
+                      pageCount,
+                      total: meta.total,
+                      pageSize: meta.limit,
+                      onPageChange: setPage,
+                    }
+                  : undefined
+              }
+            />
           )}
         </CardContent>
       </Card>

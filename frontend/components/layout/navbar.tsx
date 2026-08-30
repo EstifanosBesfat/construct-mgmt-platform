@@ -50,7 +50,7 @@ export function Navbar({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-background/80 px-4 sm:px-6 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-12 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
         {/* Left: Mobile Menu + Search Button */}
         <div className="flex items-center space-x-3">
           <button
@@ -64,7 +64,7 @@ export function Navbar({
           {/* Quick Global Search Trigger */}
           <button
             onClick={() => setIsCommandOpen(true)}
-            className="hidden sm:flex items-center space-x-3 rounded-xl border border-input bg-background/60 px-3.5 py-1.5 text-xs text-muted-foreground hover:border-amber-500/40 hover:text-foreground transition-all w-64 md:w-80"
+            className="hidden sm:flex items-center space-x-3 rounded-xl border border-input bg-background/60 px-3.5 py-1.5 text-xs text-muted-foreground hover:border-sky-500/40 hover:text-foreground transition-all w-64 md:w-80"
           >
             <Search className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="flex-1 text-left">Search projects, materials, codes...</span>
@@ -126,7 +126,7 @@ export function Navbar({
                     }}
                     className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-left text-xs font-medium hover:bg-muted text-foreground transition-colors"
                   >
-                    <Building2 className="h-4 w-4 text-amber-500" />
+                    <Building2 className="h-4 w-4 text-sky-500" />
                     <span>Create New Project</span>
                   </button>
                   <button

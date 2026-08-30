@@ -29,13 +29,13 @@ import { Tabs } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog } from '@/components/ui/dialog';
-import { PageHeader } from '@/components/layout/page-header';
 import { useProjectDetail, useDeleteProject } from '@/hooks/use-projects';
 import { useProjectBoq, useDeleteBoqItem } from '@/hooks/use-boq';
 import { useProgressRecords, useDeleteProgress } from '@/hooks/use-progress';
 import { useInventoryTransactions } from '@/hooks/use-inventory';
 import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 import { BoqItemDialog } from '@/components/boq/boq-item-dialog';
+import { BoqTable } from '@/components/boq/boq-table';
 import { ProgressFormDialog } from '@/components/progress/progress-form-dialog';
 import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
 import { BoqItem, ProgressRecord } from '@/types';
@@ -142,28 +142,24 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Back navigation */}
-      <div className="flex items-center space-x-2">
-        <Link href="/projects">
-          <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Projects
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-32 w-32 bg-sky-500/10 rounded-full blur-3xl -mr-8 -mt-8 pointer-events-none" />
 
-      {/* Project Banner Header */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 h-48 w-48 bg-amber-500/10 rounded-full blur-3xl -mr-12 -mt-12 pointer-events-none" />
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-3">
-              <span className="font-mono text-sm font-extrabold px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1.5">
+            <Link
+              href="/projects"
+              className="inline-flex items-center text-[11px] font-medium text-muted-foreground hover:text-sky-600"
+            >
+              <ArrowLeft className="h-3 w-3 mr-1" />
+              Projects
+            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-400 border border-sky-500/30">
                 {project.code}
               </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+              <h1 className="text-lg font-semibold text-foreground tracking-tight">
                 {project.name}
               </h1>
               <Badge variant="outline" className={getStatusBadgeClass(project.status)}>
@@ -171,7 +167,7 @@ export default function ProjectDetailPage() {
               </Badge>
             </div>
 
-            <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-muted-foreground">
               <span className="flex items-center">
                 <User className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
                 Client: <strong className="ml-1 text-foreground">{project.clientName}</strong>
@@ -189,21 +185,21 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setEditProjectOpen(true)}
-              className="rounded-xl"
+              className="rounded-lg"
             >
               <Pencil className="h-4 w-4 mr-1.5" />
-              Edit Project
+              Edit
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="rounded-xl"
+              className="rounded-lg"
             >
               <Trash2 className="h-4 w-4 mr-1.5" />
               Delete
@@ -211,26 +207,23 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* Global Progress Bar */}
-        <div className="mt-6 pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-3 pt-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="w-full sm:w-2/3 space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="font-semibold text-muted-foreground">Project Completion Progress</span>
-              <span className="font-bold text-amber-500">{latestProgressPct}% Complete</span>
+              <span className="font-medium text-muted-foreground">Completion</span>
+              <span className="font-semibold text-sky-600">{latestProgressPct}%</span>
             </div>
-            <Progress value={latestProgressPct} className="h-2.5" />
+            <Progress value={latestProgressPct} className="h-2" />
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="amber"
-              size="sm"
-              onClick={() => setAddProgressOpen(true)}
-              className="rounded-xl text-xs"
-            >
-              <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-              Update Progress
-            </Button>
-          </div>
+          <Button
+            variant="amber"
+            size="sm"
+            onClick={() => setAddProgressOpen(true)}
+            className="rounded-lg text-xs"
+          >
+            <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+            Update Progress
+          </Button>
         </div>
       </div>
 
@@ -263,7 +256,7 @@ export default function ProjectDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-extrabold text-amber-500">
+                <div className="text-xl font-extrabold text-sky-500">
                   {formatCurrency(totalBoqValue)}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
@@ -324,7 +317,7 @@ export default function ProjectDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveTab('boq')}
-                  className="text-xs text-amber-500"
+                  className="text-xs text-sky-500"
                 >
                   View All ({boqItems.length})
                 </Button>
@@ -415,7 +408,7 @@ export default function ProjectDetailPage() {
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle className="text-lg font-bold flex items-center space-x-2">
-                  <FileSpreadsheet className="h-5 w-5 text-amber-500" />
+                  <FileSpreadsheet className="h-5 w-5 text-sky-500" />
                   <span>Bill of Quantities (BOQ)</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -475,79 +468,15 @@ export default function ProjectDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase text-muted-foreground bg-muted/40 border-b border-border">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold w-12">#</th>
-                        <th className="px-4 py-3 font-semibold">Item Description</th>
-                        <th className="px-4 py-3 font-semibold">Unit</th>
-                        <th className="px-4 py-3 font-semibold text-right">Quantity</th>
-                        <th className="px-4 py-3 font-semibold text-right">Unit Price (ETB)</th>
-                        <th className="px-4 py-3 font-semibold text-right">Total (ETB)</th>
-                        <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {boqItems.map((item, index) => (
-                        <tr key={item.id} className="hover:bg-muted/30 transition-colors group">
-                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                            {index + 1}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-foreground">
-                            {item.description}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground font-medium">
-                            {item.unit}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-right font-medium">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-right font-medium text-muted-foreground">
-                            {formatCurrency(item.unitPrice)}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-right font-bold text-amber-500">
-                            {formatCurrency(item.total)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setEditingBoqItem(item);
-                                  setAddBoqOpen(true);
-                                }}
-                                className="h-7 w-7 text-muted-foreground hover:text-blue-500"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setDeletingBoqId(item.id)}
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="border-t-2 border-border bg-amber-500/5 font-bold text-sm">
-                      <tr>
-                        <td colSpan={5} className="px-4 py-3 text-right uppercase tracking-wider text-xs">
-                          Total BOQ Rate Value:
-                        </td>
-                        <td className="px-4 py-3 text-right font-extrabold text-amber-500 text-base">
-                          {formatCurrency(totalBoqValue)}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                <BoqTable
+                  items={boqItems}
+                  totalBoqValue={totalBoqValue}
+                  onEdit={(item) => {
+                    setEditingBoqItem(item);
+                    setAddBoqOpen(true);
+                  }}
+                  onDelete={setDeletingBoqId}
+                />
               )}
             </CardContent>
           </Card>
@@ -613,7 +542,7 @@ export default function ProjectDetailPage() {
                   {progressRecords.map((record) => (
                     <div key={record.id} className="relative group">
                       {/* Timeline node */}
-                      <div className="absolute -left-[31px] top-1 h-4 w-4 rounded-full border-2 border-background bg-amber-500 shadow-sm" />
+                      <div className="absolute -left-[31px] top-1 h-4 w-4 rounded-full border-2 border-background bg-sky-500 shadow-sm" />
 
                       <div className="p-4 rounded-xl border border-border/80 bg-background/50 hover:border-border transition-colors">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -730,7 +659,7 @@ export default function ProjectDetailPage() {
                     <tbody className="divide-y divide-border">
                       {projectTransactions.map((tx) => (
                         <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3 font-mono font-bold text-xs text-amber-500">
+                          <td className="px-4 py-3 font-mono font-bold text-xs text-sky-500">
                             {tx.reference}
                           </td>
                           <td className="px-4 py-3">

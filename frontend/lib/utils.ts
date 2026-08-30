@@ -7,6 +7,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function getPageCount(meta?: {
+  totalPages?: number;
+  pageCount?: number;
+}): number {
+  return meta?.pageCount ?? meta?.totalPages ?? 1;
+}
+
 export function formatCurrency(value: number | string | null | undefined, currency: string = 'ETB'): string {
   if (value === null || value === undefined || isNaN(Number(value))) {
     return '0.00 ' + currency;

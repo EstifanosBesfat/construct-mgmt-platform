@@ -32,10 +32,10 @@ export default function TimelinePage() {
   const totalDays = Math.max(differenceInDays(maxDate, minDate), 1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
-        title="Project Timeline & Gantt Schedule"
-        description="Visual roadmap and multi-project timeline tracking start dates, planned completion, and execution milestones."
+        title="Timeline"
+        description="Project start and end dates on one schedule."
       />
 
       {/* Legend & Stats */}
@@ -67,7 +67,7 @@ export default function TimelinePage() {
       <Card className="glass-panel border-border/80">
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center space-x-2">
-            <GanttChartSquare className="h-5 w-5 text-amber-500" />
+            <GanttChartSquare className="h-5 w-5 text-sky-500" />
             <span>Master Schedule Timeline ({formatDate(minDate)} — {formatDate(maxDate)})</span>
           </CardTitle>
           <CardDescription className="text-xs">
@@ -132,12 +132,12 @@ export default function TimelinePage() {
                     <div key={project.id} className="space-y-1.5 group">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-amber-500">
+                          <span className="font-mono font-bold text-sky-500">
                             {project.code}
                           </span>
                           <Link
                             href={`/projects/${project.id}`}
-                            className="font-semibold text-foreground hover:underline hover:text-amber-500"
+                            className="font-semibold text-foreground hover:underline hover:text-sky-500"
                           >
                             {project.name}
                           </Link>

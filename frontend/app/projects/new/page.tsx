@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Building2, ArrowLeft, Plus } from 'lucide-react';
-import Link from 'next/link';
+import { Building2, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -77,25 +76,18 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center space-x-2">
-        <Link href="/projects">
-          <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Projects
-          </Button>
-        </Link>
-      </div>
-
+    <div className="space-y-4">
       <PageHeader
         title="Create New Project"
-        description="Initialize a new construction project and set up its baseline budget and timeline."
+        description="Set the project name, client, budget, and timeline."
+        backHref="/projects"
+        backLabel="Projects"
       />
 
       <Card className="glass-panel border-border/80">
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center space-x-2">
-            <Building2 className="h-4 w-4 text-amber-500" />
+            <Building2 className="h-4 w-4 text-sky-500" />
             <span>Project Baseline Information</span>
           </CardTitle>
           <CardDescription className="text-xs">

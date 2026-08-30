@@ -82,7 +82,7 @@ export function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
           {/* Projects Results */}
           <div>
             <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center">
-              <Building2 className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
+              <Building2 className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
               Projects
             </div>
             {projects.length > 0 ? (

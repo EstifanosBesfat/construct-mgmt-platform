@@ -16,7 +16,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     const getColor = (pct: number) => {
       if (indicatorColor) return indicatorColor;
       if (pct >= 100) return 'bg-emerald-500';
-      if (pct >= 70) return 'bg-amber-500';
+      if (pct >= 70) return 'bg-sky-500';
       if (pct >= 30) return 'bg-blue-500';
       return 'bg-slate-400';
     };

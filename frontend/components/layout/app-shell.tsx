@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenLogProgress={() => setLogProgressOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-4 lg:px-6 lg:py-4 w-full animate-fade-in">
           {children}
         </main>
       </div>

@@ -25,7 +25,7 @@ import { useProgressRecords, useDeleteProgress } from '@/hooks/use-progress';
 import { useProjects } from '@/hooks/use-projects';
 import { ProgressFormDialog } from '@/components/progress/progress-form-dialog';
 import { ProgressRecord } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getPageCount } from '@/lib/utils';
 
 export default function ProgressPage() {
   const [projectFilter, setProjectFilter] = React.useState<string>('');
@@ -57,11 +57,10 @@ export default function ProgressPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
+    <div className="space-y-4">
       <PageHeader
-        title="Project Progress & Milestones"
-        description="Chronological log of construction completion stages across all ongoing and completed sites."
+        title="Progress"
+        description="Milestone completion across projects."
         actions={
           <Button
             variant="amber"
@@ -118,7 +117,7 @@ export default function ProgressPage() {
               ))}
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-16 px-4">
+            <div className="text-center py-8 px-4">
               <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <h3 className="text-base font-bold text-foreground">No progress records found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -144,20 +143,20 @@ export default function ProgressPage() {
               {records.map((record) => (
                 <div
                   key={record.id}
-                  className="p-4 rounded-2xl bg-background/50 border border-border/80 hover:border-amber-500/40 transition-all group"
+                  className="p-4 rounded-2xl bg-background/50 border border-border/80 hover:border-sky-500/40 transition-all group"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
                         <Link
                           href={`/projects/${record.project.id}`}
-                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:underline"
+                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:underline"
                         >
                           {record.project.code}
                         </Link>
                         <Link
                           href={`/projects/${record.project.id}`}
-                          className="font-bold text-foreground hover:text-amber-500 hover:underline text-sm"
+                          className="font-bold text-foreground hover:text-sky-500 hover:underline text-sm"
                         >
                           {record.project.name}
                         </Link>
@@ -214,7 +213,7 @@ export default function ProgressPage() {
           )}
 
           {/* Pagination Controls */}
-          {meta && meta.pageCount > 1 && (
+          {meta && getPageCount(meta) > 1 && (
             <div className="flex items-center justify-between pt-4 mt-4 border-t border-border text-xs">
               <span className="text-muted-foreground">
                 Showing {((meta.page - 1) * meta.limit) + 1} to{' '}
@@ -232,7 +231,7 @@ export default function ProgressPage() {
                   Previous
                 </Button>
                 <span className="font-semibold text-foreground px-2">
-                  Page {meta.page} of {meta.pageCount}
+                  Page {meta.page} of {getPageCount(meta)}
                 </span>
                 <Button
                   variant="outline"

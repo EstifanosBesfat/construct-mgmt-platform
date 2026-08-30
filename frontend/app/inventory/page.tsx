@@ -5,29 +5,23 @@ import {
   ArrowLeftRight,
   ArrowDownLeft,
   ArrowUpRight,
-  Search,
-  Filter,
-  Calendar,
-  Boxes,
-  Building2,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ColumnDef } from '@tanstack/react-table';
 import { PageHeader } from '@/components/layout/page-header';
 import { useInventoryTransactions } from '@/hooks/use-inventory';
 import { useMaterials } from '@/hooks/use-materials';
 import { useProjects } from '@/hooks/use-projects';
 import { StockInDialog } from '@/components/inventory/stock-in-dialog';
 import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
-import { TransactionType } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { InventoryTransaction, TransactionType } from '@/types';
+import { formatDate, getPageCount } from '@/lib/utils';
+import { DataTable } from '@/components/ui/data-table';
 
 export default function InventoryPage() {
   const [typeFilter, setTypeFilter] = React.useState<TransactionType | undefined>(undefined);
@@ -56,18 +50,115 @@ export default function InventoryPage() {
 
   const transactions = txData?.data ?? [];
   const meta = txData?.meta;
+  const pageCount = getPageCount(meta);
   const materials = materialsData?.data ?? [];
   const projects = projectsData?.data ?? [];
 
-  const stockInCount = transactions.filter((t) => t.type === 'STOCK_IN').length;
-  const stockOutCount = transactions.filter((t) => t.type === 'STOCK_OUT').length;
+  const columns = React.useMemo<ColumnDef<InventoryTransaction>[]>(
+    () => [
+      {
+        accessorKey: 'type',
+        header: 'Type',
+        cell: ({ row }) =>
+          row.original.type === 'STOCK_IN' ? (
+            <Badge
+              variant="success"
+              className="font-bold flex items-center w-fit text-[11px]"
+            >
+              <ArrowDownLeft className="h-3 w-3 mr-1" />
+              Stock In
+            </Badge>
+          ) : (
+            <Badge
+              variant="destructive"
+              className="font-bold flex items-center w-fit text-[11px]"
+            >
+              <ArrowUpRight className="h-3 w-3 mr-1" />
+              Stock Out
+            </Badge>
+          ),
+      },
+      {
+        accessorKey: 'reference',
+        header: 'Reference',
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-xs text-sky-500">
+            {row.original.reference}
+          </span>
+        ),
+      },
+      {
+        id: 'material',
+        accessorFn: (row) => row.material.name,
+        header: 'Material',
+        cell: ({ row }) => (
+          <div>
+            <span className="font-semibold text-foreground">{row.original.material.name}</span>
+            <span className="text-xs text-muted-foreground ml-1.5 font-mono">
+              ({row.original.material.code})
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'quantity',
+        header: 'Quantity',
+        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+        cell: ({ row }) => (
+          <span
+            className={`text-xs font-bold ${
+              row.original.type === 'STOCK_IN' ? 'text-emerald-500' : 'text-rose-500'
+            }`}
+          >
+            {row.original.type === 'STOCK_IN' ? '+' : '-'}
+            {row.original.quantity} {row.original.material.unit}
+          </span>
+        ),
+      },
+      {
+        id: 'project',
+        accessorFn: (row) => row.project?.name ?? '',
+        header: 'Project Destination',
+        cell: ({ row }) =>
+          row.original.project ? (
+            <span className="text-xs font-medium text-foreground">
+              {row.original.project.name}{' '}
+              <span className="text-muted-foreground font-mono">
+                ({row.original.project.code})
+              </span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground italic">
+              General Warehouse Receipt
+            </span>
+          ),
+      },
+      {
+        accessorKey: 'date',
+        header: 'Date',
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">{formatDate(row.original.date)}</span>
+        ),
+      },
+      {
+        accessorKey: 'notes',
+        header: 'Notes',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground italic max-w-xs truncate block">
+            {row.original.notes || '—'}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
+    <div className="space-y-4">
       <PageHeader
-        title="Inventory Movements & Ledger"
-        description="Audit full material inflow and outflow transactions across central stores and construction sites."
+        title="Inventory"
+        description="Stock-in and stock-out history."
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -210,7 +301,7 @@ export default function InventoryPage() {
               ))}
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-16 px-4">
+            <div className="text-center py-8 px-4">
               <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <h3 className="text-base font-bold text-foreground">No inventory transactions found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -218,123 +309,22 @@ export default function InventoryPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase text-muted-foreground bg-muted/40 border-b border-border">
-                  <tr>
-                    <th className="px-4 py-3.5 font-semibold">Type</th>
-                    <th className="px-4 py-3.5 font-semibold">Reference</th>
-                    <th className="px-4 py-3.5 font-semibold">Material</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Quantity</th>
-                    <th className="px-4 py-3.5 font-semibold">Project Destination</th>
-                    <th className="px-4 py-3.5 font-semibold">Date</th>
-                    <th className="px-4 py-3.5 font-semibold">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-4 py-3.5">
-                        {tx.type === 'STOCK_IN' ? (
-                          <Badge
-                            variant="success"
-                            className="font-bold flex items-center w-fit text-[11px]"
-                          >
-                            <ArrowDownLeft className="h-3 w-3 mr-1" />
-                            Stock In
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="destructive"
-                            className="font-bold flex items-center w-fit text-[11px]"
-                          >
-                            <ArrowUpRight className="h-3 w-3 mr-1" />
-                            Stock Out
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 font-mono font-bold text-xs text-amber-500">
-                        {tx.reference}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="font-semibold text-foreground">{tx.material.name}</span>
-                        <span className="text-xs text-muted-foreground ml-1.5 font-mono">
-                          ({tx.material.code})
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-right font-bold">
-                        <span
-                          className={
-                            tx.type === 'STOCK_IN' ? 'text-emerald-500' : 'text-rose-500'
-                          }
-                        >
-                          {tx.type === 'STOCK_IN' ? '+' : '-'}
-                          {tx.quantity} {tx.material.unit}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs">
-                        {tx.project ? (
-                          <span className="font-medium text-foreground">
-                            {tx.project.name}{' '}
-                            <span className="text-muted-foreground font-mono">
-                              ({tx.project.code})
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground italic">
-                            General Warehouse Receipt
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {formatDate(tx.date)}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground italic max-w-xs truncate">
-                        {tx.notes || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {meta && meta.pageCount > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs">
-              <span className="text-muted-foreground">
-                Showing {((meta.page - 1) * meta.limit) + 1} to{' '}
-                {Math.min(meta.page * meta.limit, meta.total)} of {meta.total} records
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasPreviousPage}
-                  onClick={() => setPage(page - 1)}
-                  className="h-8 px-2.5"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <span className="font-semibold text-foreground px-2">
-                  Page {meta.page} of {meta.pageCount}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasNextPage}
-                  onClick={() => setPage(page + 1)}
-                  className="h-8 px-2.5"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
+            <DataTable
+              columns={columns}
+              data={transactions}
+              getRowId={(tx) => tx.id}
+              pagination={
+                meta
+                  ? {
+                      page,
+                      pageCount,
+                      total: meta.total,
+                      pageSize: meta.limit,
+                      onPageChange: setPage,
+                    }
+                  : undefined
+              }
+            />
           )}
         </CardContent>
       </Card>

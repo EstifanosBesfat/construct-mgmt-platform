@@ -29,7 +29,7 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
             className={cn(
               'flex items-center space-x-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all duration-150',
               isActive
-                ? 'border-amber-500 text-amber-500 font-semibold'
+                ? 'border-sky-500 text-sky-500 font-semibold'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             )}
           >
@@ -40,7 +40,7 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
                 className={cn(
                   'ml-1.5 rounded-full px-2 py-0.5 text-xs',
                   isActive
-                    ? 'bg-amber-500/20 text-amber-500'
+                    ? 'bg-sky-500/20 text-sky-500'
                     : 'bg-muted text-muted-foreground'
                 )}
               >
