@@ -1,0 +1,141 @@
+// Mini Construction Management System - database schema
+//
+// Mirrors section 4 of Mini_CMS_Team_Implementation_Plan.md. Three additions
+// beyond the plan:
+//   1. Project.deletedAt  - the plan specifies DELETE /projects/:id as a soft
+//                           delete but omitted the column it needs.
+//   2. AuditLog           - advanced feature 6.5.
+//   3. @@index directives - on the columns the API filters and sorts by.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectStatus {
+  PLANNED
+  ONGOING
+  COMPLETED
+}
+
+enum TransactionType {
+  STOCK_IN
+  STOCK_OUT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model Project {
+  id         String        @id @default(cuid())
+  name       String
+  code       String        @unique
+  clientName String
+  location   String
+  startDate  DateTime
+  endDate    DateTime
+  budget     Decimal       @db.Decimal(15, 2)
+  status     ProjectStatus @default(PLANNED)
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  boqItems              BoqItem[]
+  inventoryTransactions InventoryTransaction[]
+  progressRecords       ProgressRecord[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
+
+model BoqItem {
+  id          String   @id @default(cuid())
+  projectId   String
+  description String
+  unit        String
+  quantity    Decimal  @db.Decimal(10, 3)
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  // Always recomputed server-side as quantity * unitPrice.
+  total       Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Material {
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique
+  unit         String
+  currentStock Decimal  @default(0) @db.Decimal(10, 3)
+  minimumStock Decimal  @default(0) @db.Decimal(10, 3)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inventoryTransactions InventoryTransaction[]
+
+  @@index([name])
+}
+
+model InventoryTransaction {
+  id         String          @id @default(cuid())
+  materialId String
+  projectId  String?
+  type       TransactionType
+  quantity   Decimal         @db.Decimal(10, 3)
+  date       DateTime
+  reference  String
+  notes      String?
+  createdAt  DateTime        @default(now())
+
+  // Restrict (the default for a required relation) intentionally blocks
+  // deleting a material that already has stock movements recorded against it.
+  material Material @relation(fields: [materialId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id])
+
+  @@index([materialId])
+  @@index([projectId])
+  @@index([type])
+  @@index([date])
+}
+
+model ProgressRecord {
+  id          String   @id @default(cuid())
+  projectId   String
+  date        DateTime
+  description String
+  percentage  Decimal  @db.Decimal(5, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([date])
+}
+
+// Advanced feature 6.5. Deliberately has no foreign keys: it records rows from
+// several different tables, and entries must survive deletion of the row they
+// describe.
+model AuditLog {
+  id        String      @id @default(cuid())
+  entity    String
+  entityId  String
+  action    AuditAction
+  changes   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
