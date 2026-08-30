@@ -134,8 +134,14 @@ docker compose down
 # Run backend Jest unit tests
 cd backend && npm run test
 
+# Run frontend React Testing Library tests
+cd frontend && npm run test
+
 # Run test suite with coverage
 cd backend && npm run test:cov
+
+# Run all workspace tests
+npm test
 
 # Run build check across all workspaces
 npm run build
