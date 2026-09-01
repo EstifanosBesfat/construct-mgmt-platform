@@ -17,100 +17,82 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const OTP_FILE = path.join(DATA_DIR, 'otp.json');
 
-// Ensure data directory exists
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch {}
 }
 
-// Read all registered users from disk
+// ONLY default seed user
+const DEFAULT_SEED_USERS: UserRecord[] = [
+  {
+    email: 'admin@gmail.com',
+    name: 'System Admin',
+    password: 'Root@123',
+    createdAt: '2026-09-01T00:00:00.000Z',
+  },
+];
+
 export function getUsers(): UserRecord[] {
   try {
     ensureDataDir();
     if (!fs.existsSync(USERS_FILE)) {
-      const defaultUsers: UserRecord[] = [
-        {
-          email: 'admin@gmail.com',
-          name: 'System Admin',
-          password: 'Root@123',
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2), 'utf-8');
-      return defaultUsers;
+      try {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(DEFAULT_SEED_USERS, null, 2), 'utf-8');
+      } catch {}
+      return DEFAULT_SEED_USERS;
     }
     const raw = fs.readFileSync(USERS_FILE, 'utf-8');
-    return JSON.parse(raw) as UserRecord[];
-  } catch (err) {
-    console.error('Error reading users from disk:', err);
-    return [];
+    const users = JSON.parse(raw) as UserRecord[];
+    return users.length > 0 ? users : DEFAULT_SEED_USERS;
+  } catch {
+    return DEFAULT_SEED_USERS;
   }
 }
 
-// Save or update a user on disk
 export function saveUser(user: UserRecord): boolean {
   try {
     const users = getUsers();
     const normalizedEmail = user.email.trim().toLowerCase();
-    
-    // Check if user already exists
     const existingIndex = users.findIndex(
       (u) => u.email.toLowerCase() === normalizedEmail
     );
-    
     if (existingIndex >= 0) {
-      // Update existing user
-      users[existingIndex].password = user.password;
-      if (user.name) users[existingIndex].name = user.name;
+      users[existingIndex] = { ...users[existingIndex], ...user, email: normalizedEmail };
     } else {
-      // Add new user
-      users.push({
-        email: normalizedEmail,
-        name: user.name || normalizedEmail.split('@')[0],
-        password: user.password,
-        createdAt: new Date().toISOString(),
-      });
+      users.push({ ...user, email: normalizedEmail });
     }
-
+    ensureDataDir();
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
     return true;
-  } catch (err) {
-    console.error('Error saving user to disk:', err);
+  } catch {
     return false;
   }
 }
 
-// Reset a user's password
-export function resetPassword(email: string, newPassword: string): boolean {
+export function findUserByEmail(email: string): UserRecord | null {
+  const users = getUsers();
+  const normalizedEmail = email.trim().toLowerCase();
+  return users.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
+}
+
+export function resetPassword(email: string, newPass: string): boolean {
   try {
     const users = getUsers();
     const normalizedEmail = email.trim().toLowerCase();
-    const existingIndex = users.findIndex(
-      (u) => u.email.toLowerCase() === normalizedEmail
-    );
-
-    if (existingIndex < 0) {
-      return false;
-    }
-
-    users[existingIndex].password = newPassword;
+    const user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+    if (!user) return false;
+    user.password = newPass;
+    ensureDataDir();
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
     return true;
-  } catch (err) {
-    console.error('Error resetting password on disk:', err);
+  } catch {
     return false;
   }
 }
 
-// Find a user by email
-export function findUserByEmail(email: string): UserRecord | undefined {
-  const users = getUsers();
-  const normalizedEmail = email.trim().toLowerCase();
-  return users.find((u) => u.email.toLowerCase() === normalizedEmail);
-}
-
-// Read active OTPs
 export function getOtps(): Record<string, OtpRecord> {
   try {
     ensureDataDir();
@@ -124,44 +106,39 @@ export function getOtps(): Record<string, OtpRecord> {
   }
 }
 
-// Save an active OTP
-export function saveOtp(email: string, code: string, expiresAt: number) {
+export function saveOtp(email: string, code: string, expiresAt: number): void {
   try {
     const otps = getOtps();
-    const normalizedEmail = email.trim().toLowerCase();
-    otps[normalizedEmail] = { code, expiresAt };
+    otps[email.trim().toLowerCase()] = { code, expiresAt };
+    ensureDataDir();
     fs.writeFileSync(OTP_FILE, JSON.stringify(otps, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving OTP to disk:', err);
-  }
+  } catch {}
 }
 
-// Verify and consume an OTP
 export function verifyAndConsumeOtp(email: string, code: string): { valid: boolean; error?: string } {
   try {
     const otps = getOtps();
-    const normalizedEmail = email.trim().toLowerCase();
-    const record = otps[normalizedEmail];
-
+    const normalized = email.trim().toLowerCase();
+    const record = otps[normalized];
     if (!record) {
-      return { valid: false, error: 'No verification code was requested for this email. Please request a new code.' };
+      return { valid: false, error: 'No verification code was requested for this email' };
     }
-
     if (Date.now() > record.expiresAt) {
-      delete otps[normalizedEmail];
-      fs.writeFileSync(OTP_FILE, JSON.stringify(otps, null, 2), 'utf-8');
+      delete otps[normalized];
+      try {
+        fs.writeFileSync(OTP_FILE, JSON.stringify(otps, null, 2), 'utf-8');
+      } catch {}
       return { valid: false, error: 'Verification code has expired. Please request a new one.' };
     }
-
     if (record.code !== code.trim()) {
-      return { valid: false, error: 'Incorrect verification code. Please check your email and try again.' };
+      return { valid: false, error: 'Invalid verification code. Please check and try again.' };
     }
-
-    // Valid code! Delete consumed OTP
-    delete otps[normalizedEmail];
-    fs.writeFileSync(OTP_FILE, JSON.stringify(otps, null, 2), 'utf-8');
+    delete otps[normalized];
+    try {
+      fs.writeFileSync(OTP_FILE, JSON.stringify(otps, null, 2), 'utf-8');
+    } catch {}
     return { valid: true };
   } catch {
-    return { valid: false, error: 'Failed to verify code' };
+    return { valid: false, error: 'Verification failed' };
   }
 }
