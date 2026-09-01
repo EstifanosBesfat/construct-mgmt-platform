@@ -65,3 +65,4 @@ postgres-data/
 .temp/
 .tmp/
 .cursorrules
+Test/

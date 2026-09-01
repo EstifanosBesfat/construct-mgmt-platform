@@ -103,11 +103,12 @@ npm run dev:frontend
 To build and run the entire stack (PostgreSQL, NestJS API, and Next.js Frontend) inside Docker containers:
 
 ```bash
-# Start all containers in background (backend applies migrations on boot)
+# Start all containers in background
 docker compose up -d --build
 
-# Seed sample demo data once the API is healthy
-docker compose exec backend node backend/dist/prisma/seed.js
+# Run migrations and seed inside the backend container
+docker compose exec backend npx prisma migrate deploy
+docker compose exec backend npx prisma db seed
 
 # View container status and logs
 docker compose ps
@@ -134,14 +135,8 @@ docker compose down
 # Run backend Jest unit tests
 cd backend && npm run test
 
-# Run frontend React Testing Library tests
-cd frontend && npm run test
-
 # Run test suite with coverage
 cd backend && npm run test:cov
-
-# Run all workspace tests
-npm test
 
 # Run build check across all workspaces
 npm run build
