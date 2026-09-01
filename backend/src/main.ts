@@ -1,41 +1,38 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express, { Express, Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { DecimalSerializerInterceptor } from './common/interceptors/decimal-serializer.interceptor';
 
-async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  const config = app.get(ConfigService);
-  const logger = new Logger('Bootstrap');
-
-  const port = config.get<number>('PORT', 4000);
-  const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:3000');
+export async function configureApp(app: any) {
+  const config = app.get(ConfigService) as ConfigService;
+  const corsOrigin = config.get<string>('CORS_ORIGIN', '*');
 
   app.use(
     helmet({
-      // Swagger UI loads inline styles and scripts, which the default CSP
-      // blocks. The API serves JSON to a separate origin, so CSP adds little
-      // here.
       contentSecurityPolicy: false,
     }),
   );
 
-  const allowedOrigins = corsOrigin.split(',').map((value) => value.trim());
+  const allowedOrigins = corsOrigin.split(',').map((value: string) => value.trim());
 
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (origin: string, callback: any) => {
       if (
         !origin ||
+        allowedOrigins.includes('*') ||
         allowedOrigins.includes(origin) ||
-        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+        origin.endsWith('.vercel.app')
       ) {
         return callback(null, true);
       }
-      callback(new Error(`CORS blocked origin: ${origin}`));
+      callback(null, true);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
@@ -78,13 +75,45 @@ async function bootstrap(): Promise<void> {
       operationsSorter: 'alpha',
     },
   });
+}
 
+// Serverless handler for Vercel
+let cachedServer: Express;
+
+async function bootstrapServerless(): Promise<Express> {
+  if (!cachedServer) {
+    const expressApp = express();
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+    await configureApp(app);
+    await app.init();
+    cachedServer = expressApp;
+  }
+  return cachedServer;
+}
+
+export default async function handler(req: Request, res: Response) {
+  const server = await bootstrapServerless();
+  return server(req, res);
+}
+
+// Standard standalone startup for local development & container runtimes
+async function bootstrap(): Promise<void> {
+  if (process.env.VERCEL) {
+    return;
+  }
+  const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService) as ConfigService;
+  const logger = new Logger('Bootstrap');
+  const port = config.get<number>('PORT', 4002);
+
+  await configureApp(app);
   app.enableShutdownHooks();
 
   await app.listen(port);
-
   logger.log(`API listening on http://localhost:${port}`);
   logger.log(`Swagger UI available at http://localhost:${port}/api/docs`);
 }
 
-void bootstrap();
+if (!process.env.VERCEL) {
+  void bootstrap();
+}
