@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: 'ConstructCMS — Construction Management Platform',
   description:
     'Modern full-stack construction project management platform for tracking projects, BOQ, material inventory, and milestone progress.',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({
