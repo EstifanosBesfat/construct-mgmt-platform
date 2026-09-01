@@ -5,32 +5,27 @@ import Link from 'next/link';
 import {
   TrendingUp,
   Plus,
-  Search,
-  Filter,
-  Building2,
-  Calendar,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
+  Calendar,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 import { useProgressRecords, useDeleteProgress } from '@/hooks/use-progress';
 import { useProjects } from '@/hooks/use-projects';
 import { ProgressFormDialog } from '@/components/progress/progress-form-dialog';
-import { ProgressRecord } from '@/types';
-import { formatDate, getPageCount } from '@/lib/utils';
+import { ProgressRecord, Project } from '@/types';
+import { formatDate } from '@/lib/utils';
 
 export default function ProgressPage() {
   const [projectFilter, setProjectFilter] = React.useState<string>('');
   const [page, setPage] = React.useState(1);
-  const limit = 10;
+  const [pageSize, setPageSize] = React.useState(10);
 
   const [addProgressOpen, setAddProgressOpen] = React.useState(false);
   const [editingRecord, setEditingRecord] = React.useState<ProgressRecord | null>(null);
@@ -38,17 +33,19 @@ export default function ProgressPage() {
 
   const { data: progressData, isLoading } = useProgressRecords({
     page,
-    limit,
+    limit: pageSize,
     projectId: projectFilter || undefined,
   });
 
   const { data: projectsData } = useProjects({ limit: 100 });
-
   const deleteMutation = useDeleteProgress(projectFilter || undefined);
 
-  const records = progressData?.data ?? [];
+  const records: ProgressRecord[] = progressData?.data ?? [];
   const meta = progressData?.meta;
-  const projects = projectsData?.data ?? [];
+  const projects: Project[] = projectsData?.data ?? [];
+
+  const totalResults = meta?.total ?? records.length;
+  const totalPages = Math.ceil(totalResults / pageSize) || 1;
 
   const handleDeleteConfirm = async () => {
     if (!deletingRecordId) return;
@@ -57,199 +54,142 @@ export default function ProgressPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Top Header */}
       <PageHeader
-        title="Progress"
-        description="Milestone completion across projects."
-        actions={
-          <Button
-            variant="amber"
-            size="sm"
-            onClick={() => {
-              setEditingRecord(null);
-              setAddProgressOpen(true);
-            }}
-            className="rounded-xl shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Log Milestone
-          </Button>
-        }
+        title="Milestone Progress Tracking"
+        description="Field progress completion logs across construction sites."
       />
 
-      {/* Filter Bar */}
-      <Card className="glass-panel border-border/80">
-        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-              Filter by Project:
-            </span>
-            <Select
-              value={projectFilter}
-              onChange={(e) => {
-                setProjectFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full sm:w-64 text-xs h-9"
-            >
-              <option value="">All Projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.code})
-                </option>
-              ))}
-            </Select>
-          </div>
+      {/* Filter and Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1">
+        <div className="flex items-center space-x-2">
+          <select
+            value={projectFilter}
+            onChange={(e) => {
+              setProjectFilter(e.target.value);
+              setPage(1);
+            }}
+            className="h-7 text-xs px-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground focus:outline-none"
+          >
+            <option value="">+ All Projects</option>
+            {projects.map((p: Project) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.code})
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <p className="text-xs text-muted-foreground">
-            Showing {records.length} milestone updates
-          </p>
-        </CardContent>
-      </Card>
+        <Button
+          variant="default"
+          size="xs"
+          onClick={() => {
+            setEditingRecord(null);
+            setAddProgressOpen(true);
+          }}
+          className="font-semibold"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Log Milestone
+        </Button>
+      </div>
 
-      {/* Progress Milestones Feed */}
-      <Card className="glass-panel border-border/80">
-        <CardContent className="p-6">
+      {/* Progress Records List */}
+      <Card>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="p-4 space-y-2">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                <Skeleton key={i} className="h-14 w-full rounded-md" />
               ))}
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-8 px-4">
-              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="text-base font-bold text-foreground">No progress records found</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                {projectFilter
-                  ? 'No progress reports logged for this selected project.'
-                  : 'Start tracking project execution by logging milestone completions.'}
+            <div className="text-center py-12 px-4">
+              <TrendingUp className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+              <p className="text-xs font-semibold text-foreground">No progress records found</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Log a milestone to track execution.
               </p>
-              <Button
-                variant="amber"
-                size="sm"
-                onClick={() => {
-                  setEditingRecord(null);
-                  setAddProgressOpen(true);
-                }}
-                className="mt-4 rounded-xl"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Log First Milestone
-              </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {records.map((record) => (
+            <div className="divide-y divide-border">
+              {records.map((record: ProgressRecord) => (
                 <div
                   key={record.id}
-                  className="p-4 rounded-2xl bg-background/50 border border-border/80 hover:border-sky-500/40 transition-all group"
+                  className="p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-muted/30 transition-colors"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/projects/${record.project.id}`}
-                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:underline"
-                        >
-                          {record.project.code}
-                        </Link>
-                        <Link
-                          href={`/projects/${record.project.id}`}
-                          className="font-bold text-foreground hover:text-sky-500 hover:underline text-sm"
-                        >
-                          {record.project.name}
-                        </Link>
-                      </div>
-                      <h4 className="font-semibold text-foreground text-sm">
-                        {record.description}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="success" className="font-bold text-sm px-3 py-1">
-                        {record.percentage}% Complete
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <Link
+                        href={`/projects/${record.project.id}`}
+                        className="font-mono text-[11px] font-bold text-foreground bg-muted px-1.5 py-0.5 rounded hover:underline"
+                      >
+                        {record.project.code}
+                      </Link>
+                      <Link
+                        href={`/projects/${record.project.id}`}
+                        className="font-medium text-foreground hover:underline"
+                      >
+                        {record.project.name}
+                      </Link>
+                      <Badge variant="success" className="text-[10px] font-bold">
+                        {record.percentage}%
                       </Badge>
-                      <div className="flex items-center space-x-1 pl-2 border-l border-border">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingRecord(record);
-                            setAddProgressOpen(true);
-                          }}
-                          className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeletingRecordId(record.id)}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
+                    <p className="font-semibold text-foreground text-xs">{record.description}</p>
+                    {record.notes && (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        &ldquo;{record.notes}&rdquo;
+                      </p>
+                    )}
                   </div>
 
-                  {record.notes && (
-                    <p className="mt-3 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-xl italic">
-                      &ldquo;{record.notes}&rdquo;
-                    </p>
-                  )}
-
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t border-border/40">
+                  <div className="flex items-center space-x-3 text-muted-foreground text-[11px]">
                     <span className="flex items-center">
                       <Calendar className="h-3 w-3 mr-1" />
-                      Milestone Date: {formatDate(record.date)}
+                      {formatDate(record.date)}
                     </span>
-                    <span>Logged {formatDate(record.createdAt)}</span>
+                    <div className="flex items-center space-x-1 pl-2 border-l border-border">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => {
+                          setEditingRecord(record);
+                          setAddProgressOpen(true);
+                        }}
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-600"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setDeletingRecordId(record.id)}
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Pagination Controls */}
-          {meta && getPageCount(meta) > 1 && (
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-border text-xs">
-              <span className="text-muted-foreground">
-                Showing {((meta.page - 1) * meta.limit) + 1} to{' '}
-                {Math.min(meta.page * meta.limit, meta.total)} of {meta.total} reports
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasPreviousPage}
-                  onClick={() => setPage(page - 1)}
-                  className="h-8 px-2.5"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <span className="font-semibold text-foreground px-2">
-                  Page {meta.page} of {getPageCount(meta)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!meta.hasNextPage}
-                  onClick={() => setPage(page + 1)}
-                  className="h-8 px-2.5"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Pagination Bar */}
+          <PaginationBar
+            currentPage={page}
+            totalPages={totalPages}
+            totalResults={totalResults}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
-      {/* Progress Modal */}
+      {/* Dialogs */}
       <ProgressFormDialog
         isOpen={addProgressOpen}
         onClose={() => {
@@ -259,20 +199,20 @@ export default function ProgressPage() {
         recordToEdit={editingRecord}
       />
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         isOpen={Boolean(deletingRecordId)}
         onClose={() => setDeletingRecordId(null)}
         title="Delete Milestone Record"
-        description="Are you sure you want to remove this milestone record?"
+        description="Are you sure you want to delete this milestone record?"
         maxWidth="sm"
       >
-        <div className="flex items-center justify-end space-x-3 pt-4">
-          <Button variant="outline" onClick={() => setDeletingRecordId(null)}>
+        <div className="flex items-center justify-end space-x-2 pt-3">
+          <Button variant="outline" size="sm" onClick={() => setDeletingRecordId(null)}>
             Cancel
           </Button>
           <Button
             variant="destructive"
+            size="sm"
             isLoading={deleteMutation.isPending}
             onClick={handleDeleteConfirm}
           >

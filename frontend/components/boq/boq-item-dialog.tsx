@@ -151,11 +151,11 @@ export function BoqItemDialog({
         </div>
 
         {/* Dynamic Calculated Line Total Preview */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
           <span className="font-medium text-muted-foreground">
             Computed Line Total ({quantity} × {unitPrice}):
           </span>
-          <span className="font-bold text-sky-500 text-sm">
+          <span className="font-bold text-amber-500 text-sm">
             {formatCurrency(calculatedTotal)}
           </span>
         </div>

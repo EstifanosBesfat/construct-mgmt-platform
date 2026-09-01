@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useProjects } from '@/hooks/use-projects';
 import { useCreateProgress, useUpdateProgress } from '@/hooks/use-progress';
 import { ProgressRecord } from '@/types';
+import { toast } from 'sonner';
 
 const progressSchema = z.object({
   projectId: z.string().min(1, 'Please select a project'),
@@ -40,7 +41,10 @@ export function ProgressFormDialog({
   const createMutation = useCreateProgress();
   const updateMutation = useUpdateProgress();
   const { data: projectsData } = useProjects({ limit: 100 });
-  const projects = projectsData?.data ?? [];
+  const allProjects = projectsData?.data ?? [];
+
+  // Completed projects cannot have new milestones logged
+  const activeProjects = allProjects.filter((p) => p.status !== 'COMPLETED');
 
   const {
     register,
@@ -60,7 +64,11 @@ export function ProgressFormDialog({
     },
   });
 
+  const selectedProjectId = watch('projectId');
   const currentPercentage = watch('percentage') || 0;
+
+  const selectedProject = allProjects.find((p) => p.id === selectedProjectId);
+  const minRequiredPercentage = Number((selectedProject as any)?.latestProgressPercentage ?? (selectedProject as any)?.latestProgress ?? 0);
 
   React.useEffect(() => {
     if (recordToEdit) {
@@ -72,17 +80,29 @@ export function ProgressFormDialog({
         notes: recordToEdit.notes ?? '',
       });
     } else {
+      const initialProjId = defaultProjectId || (activeProjects[0]?.id ?? '');
+      const initProj = allProjects.find((p) => p.id === initialProjId);
+      const initProgress = Number((initProj as any)?.latestProgressPercentage ?? (initProj as any)?.latestProgress ?? 0);
+
       reset({
-        projectId: defaultProjectId || (projects[0]?.id ?? ''),
+        projectId: initialProjId,
         date: new Date().toISOString().split('T')[0],
         description: '',
-        percentage: 0,
+        percentage: initProgress,
         notes: '',
       });
     }
-  }, [recordToEdit, defaultProjectId, reset, isOpen, projects]);
+  }, [recordToEdit, defaultProjectId, reset, isOpen]);
 
   const onSubmit = async (values: ProgressFormValues) => {
+    // Validate forward progress rule
+    if (!isEditing && Number(values.percentage) < minRequiredPercentage) {
+      toast.error(
+        `Progress percentage cannot decrease. New milestone (${values.percentage}%) cannot be lower than the current progress (${minRequiredPercentage}%).`
+      );
+      return;
+    }
+
     try {
       if (isEditing && recordToEdit) {
         await updateMutation.mutateAsync({
@@ -128,13 +148,18 @@ export function ProgressFormDialog({
               disabled={isEditing}
               error={errors.projectId?.message}
             >
-              <option value="">-- Choose Project --</option>
-              {projects.map((p) => (
+              <option value="">-- Select Project --</option>
+              {activeProjects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} ({p.code}) — {p.status}
+                  {p.name} ({p.code})
                 </option>
               ))}
             </Select>
+            {activeProjects.length === 0 && (
+              <p className="text-[11px] text-amber-600 mt-1">
+                No active projects available.
+              </p>
+            )}
           </div>
         )}
 
@@ -155,23 +180,25 @@ export function ProgressFormDialog({
               <label className="text-xs font-semibold text-foreground">
                 Progress Percentage *
               </label>
-              <span className="text-xs font-bold text-sky-500">
-                {currentPercentage}%
-              </span>
+              <div className="flex items-center space-x-1.5 text-xs">
+                <span className="font-bold text-[#EA580C]">
+                  {currentPercentage}%
+                </span>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
               <input
                 type="range"
-                min="0"
+                min={isEditing ? 0 : minRequiredPercentage}
                 max="100"
                 step="1"
                 value={currentPercentage}
                 onChange={(e) => setValue('percentage', Number(e.target.value))}
-                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-sky-500"
+                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-[#EA580C]"
               />
               <Input
                 type="number"
-                min="0"
+                min={isEditing ? 0 : minRequiredPercentage}
                 max="100"
                 step="1"
                 {...register('percentage')}
@@ -209,8 +236,9 @@ export function ProgressFormDialog({
           </Button>
           <Button
             type="submit"
-            variant="amber"
+            variant="default"
             isLoading={isSubmitting || createMutation.isPending || updateMutation.isPending}
+            className="font-semibold"
           >
             {isEditing ? 'Update Record' : 'Save Progress'}
           </Button>
