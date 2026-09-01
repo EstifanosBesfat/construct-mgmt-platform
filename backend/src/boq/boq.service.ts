@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { BoqItem, Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { BoqItem, Prisma, ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateBoqItemDto } from './dto/create-boq-item.dto';
@@ -23,10 +27,6 @@ export class BoqService {
     private readonly projectsService: ProjectsService,
   ) {}
 
-  /**
-   * Line total is always derived. Decimal.js `toDecimalPlaces(2)` uses
-   * ROUND_HALF_UP, matching the `Decimal(15, 2)` column.
-   */
   static computeTotal(
     quantity: Prisma.Decimal | number,
     unitPrice: Prisma.Decimal | number,
@@ -37,7 +37,13 @@ export class BoqService {
   }
 
   async create(projectId: string, dto: CreateBoqItemDto): Promise<BoqItem> {
-    await this.projectsService.findActiveOrFail(projectId);
+    const project = await this.projectsService.findActiveOrFail(projectId);
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot add BOQ line items to a COMPLETED project. The project is already finalized.',
+      );
+    }
 
     return this.prisma.boqItem.create({
       data: {
@@ -83,7 +89,15 @@ export class BoqService {
 
   async update(id: string, dto: UpdateBoqItemDto): Promise<BoqItem> {
     const existing = await this.findOrFail(id);
-    await this.projectsService.findActiveOrFail(existing.projectId);
+    const project = await this.projectsService.findActiveOrFail(
+      existing.projectId,
+    );
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot modify BOQ line items on a COMPLETED project.',
+      );
+    }
 
     const quantity =
       dto.quantity !== undefined
@@ -110,7 +124,15 @@ export class BoqService {
 
   async remove(id: string): Promise<void> {
     const existing = await this.findOrFail(id);
-    await this.projectsService.findActiveOrFail(existing.projectId);
+    const project = await this.projectsService.findActiveOrFail(
+      existing.projectId,
+    );
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot delete BOQ line items from a COMPLETED project.',
+      );
+    }
 
     await this.prisma.boqItem.delete({ where: { id } });
   }

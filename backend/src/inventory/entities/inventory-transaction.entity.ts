@@ -53,7 +53,10 @@ export class InventoryTransactionEntity {
   @ApiProperty({ example: 'GRN-2001' })
   reference: string;
 
-  @ApiPropertyOptional({ nullable: true, example: 'Replenishment from Derba Cement' })
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Replenishment from Derba Cement',
+  })
   notes: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })

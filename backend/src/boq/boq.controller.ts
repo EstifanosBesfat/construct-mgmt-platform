@@ -42,7 +42,10 @@ export class BoqController {
       'A client-supplied total is rejected.',
   })
   @ApiParam({ name: 'id', description: 'Project id (cuid)' })
-  @ApiCreatedResponse({ description: 'The BOQ item was created', type: BoqItemEntity })
+  @ApiCreatedResponse({
+    description: 'The BOQ item was created',
+    type: BoqItemEntity,
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiNotFoundResponse({ description: 'No such project' })
   create(

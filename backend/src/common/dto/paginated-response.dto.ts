@@ -13,7 +13,10 @@ export class PaginationMetaDto {
   @ApiProperty({ description: 'Total number of pages', example: 5 })
   totalPages: number;
 
-  @ApiProperty({ description: 'Whether a following page exists', example: true })
+  @ApiProperty({
+    description: 'Whether a following page exists',
+    example: true,
+  })
   hasNextPage: boolean;
 
   @ApiProperty({

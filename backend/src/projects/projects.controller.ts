@@ -45,7 +45,9 @@ export class ProjectsController {
     type: ProjectEntity,
   })
   @ApiBadRequestResponse({ description: 'Validation failed' })
-  @ApiConflictResponse({ description: 'A project with this code already exists' })
+  @ApiConflictResponse({
+    description: 'A project with this code already exists',
+  })
   create(@Body() createProjectDto: CreateProjectDto): Promise<Project> {
     return this.projectsService.create(createProjectDto);
   }
@@ -88,7 +90,9 @@ export class ProjectsController {
   @ApiOkResponse({ description: 'The updated project', type: ProjectEntity })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiNotFoundResponse({ description: 'No such project' })
-  @ApiConflictResponse({ description: 'Another project already uses this code' })
+  @ApiConflictResponse({
+    description: 'Another project already uses this code',
+  })
   update(
     @Param('id') id: string,
     @Body() updateProjectDto: UpdateProjectDto,

@@ -24,8 +24,19 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  const allowedOrigins = corsOrigin.split(',').map((value) => value.trim());
+
   app.enableCors({
-    origin: corsOrigin.split(',').map((value) => value.trim()),
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });

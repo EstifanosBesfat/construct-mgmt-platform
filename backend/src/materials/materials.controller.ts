@@ -42,9 +42,14 @@ export class MaterialsController {
     description:
       'currentStock starts at 0. Record opening stock through POST /inventory/stock-in.',
   })
-  @ApiCreatedResponse({ description: 'The material was created', type: MaterialEntity })
+  @ApiCreatedResponse({
+    description: 'The material was created',
+    type: MaterialEntity,
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
-  @ApiConflictResponse({ description: 'A material with this code already exists' })
+  @ApiConflictResponse({
+    description: 'A material with this code already exists',
+  })
   create(@Body() dto: CreateMaterialDto): Promise<MaterialWithStockFlag> {
     return this.materialsService.create(dto);
   }
@@ -85,7 +90,9 @@ export class MaterialsController {
   @ApiOkResponse({ description: 'The updated material', type: MaterialEntity })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiNotFoundResponse({ description: 'No such material' })
-  @ApiConflictResponse({ description: 'Another material already uses this code' })
+  @ApiConflictResponse({
+    description: 'Another material already uses this code',
+  })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateMaterialDto,

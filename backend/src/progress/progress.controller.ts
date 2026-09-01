@@ -70,7 +70,10 @@ export class ProgressController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a single progress record' })
   @ApiParam({ name: 'id', description: 'Progress record id (cuid)' })
-  @ApiOkResponse({ description: 'The progress record', type: ProgressRecordEntity })
+  @ApiOkResponse({
+    description: 'The progress record',
+    type: ProgressRecordEntity,
+  })
   @ApiNotFoundResponse({ description: 'No such progress record' })
   findOne(@Param('id') id: string): Promise<ProgressRecordWithProject> {
     return this.progressService.findOne(id);

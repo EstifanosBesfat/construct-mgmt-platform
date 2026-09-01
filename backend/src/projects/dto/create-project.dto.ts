@@ -52,7 +52,10 @@ export class CreateProjectDto {
   @MaxLength(150)
   clientName: string;
 
-  @ApiProperty({ description: 'Project location', example: 'Bole, Addis Ababa' })
+  @ApiProperty({
+    description: 'Project location',
+    example: 'Bole, Addis Ababa',
+  })
   @IsString()
   @IsNotEmpty({ message: 'location is required' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))

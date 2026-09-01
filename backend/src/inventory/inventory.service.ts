@@ -1,9 +1,15 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Material, Prisma, TransactionType } from '@prisma/client';
+import {
+  Material,
+  Prisma,
+  ProjectStatus,
+  TransactionType,
+} from '@prisma/client';
 import {
   buildPaginatedResponse,
   PaginatedResponseDto,
@@ -29,7 +35,7 @@ const transactionInclude = {
     select: { id: true, name: true, code: true, unit: true },
   },
   project: {
-    select: { id: true, name: true, code: true },
+    select: { id: true, name: true, code: true, status: true },
   },
 } satisfies Prisma.InventoryTransactionInclude;
 
@@ -53,7 +59,19 @@ export class InventoryService {
 
   async stockIn(dto: StockInDto): Promise<StockMovementResult> {
     if (dto.projectId) {
-      await this.projectsService.findActiveOrFail(dto.projectId);
+      const project = await this.projectsService.findActiveOrFail(
+        dto.projectId,
+      );
+      if (project.status === ProjectStatus.PLANNED) {
+        throw new BadRequestException(
+          'Cannot link material receipts to a PLANNED project. Project must be ONGOING.',
+        );
+      }
+      if (project.status === ProjectStatus.COMPLETED) {
+        throw new BadRequestException(
+          'Cannot link material receipts to a COMPLETED project.',
+        );
+      }
     }
 
     await this.materialsService.findOrFail(dto.materialId);
@@ -88,15 +106,25 @@ export class InventoryService {
   }
 
   async stockOut(dto: StockOutDto): Promise<StockMovementResult> {
-    await this.projectsService.findActiveOrFail(dto.projectId);
+    const project = await this.projectsService.findActiveOrFail(dto.projectId);
+
+    // Business Rule: Materials can only be issued to ONGOING / active construction sites
+    if (project.status === ProjectStatus.PLANNED) {
+      throw new BadRequestException(
+        'Cannot allocate materials to a PLANNED project. The project must be ONGOING (in progress) to receive site materials.',
+      );
+    }
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot allocate materials to a COMPLETED project. The project is already finalized.',
+      );
+    }
 
     const quantity = new Prisma.Decimal(dto.quantity);
 
     const { transaction, material } = await this.prisma.$transaction(
       async (tx) => {
-        // Decrement only when currentStock is sufficient. The gte predicate
-        // makes concurrent stock-outs race-safe: the second writer sees 0
-        // rows updated and falls through to the 422 path.
         const decremented = await tx.material.updateMany({
           where: {
             id: dto.materialId,
@@ -119,7 +147,7 @@ export class InventoryService {
           throw new UnprocessableEntityException({
             statusCode: 422,
             error: 'Unprocessable Entity',
-            message: `Stock out of ${quantity.toString()} exceeds available stock of ${existing.currentStock.toString()}`,
+            message: `Requested quantity (${quantity.toString()}) exceeds available stock (${existing.currentStock.toString()}).`,
             availableStock: existing.currentStock.toNumber(),
             requestedQuantity: quantity.toNumber(),
           });
