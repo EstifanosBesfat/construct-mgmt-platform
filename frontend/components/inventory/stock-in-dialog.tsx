@@ -39,14 +39,16 @@ export function StockInDialog({
   const { data: materialsData } = useMaterials({ limit: 100 });
   const { data: projectsData } = useProjects({ limit: 100 });
 
-  const materials = materialsData?.data ?? [];
-  const projects = projectsData?.data ?? [];
+  const materials = React.useMemo(() => materialsData?.data ?? [], [materialsData]);
+  const projects = React.useMemo(() => projectsData?.data ?? [], [projectsData]);
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<StockInFormValues>({
     resolver: zodResolver(stockInSchema),
@@ -55,7 +57,7 @@ export function StockInDialog({
       projectId: '',
       quantity: 1,
       date: new Date().toISOString().split('T')[0],
-      reference: `GRN-${Math.floor(1000 + Math.random() * 9000)}`,
+      reference: '',
       notes: '',
     },
   });
@@ -65,16 +67,25 @@ export function StockInDialog({
 
   React.useEffect(() => {
     if (isOpen) {
+      const initialMatId = defaultMaterialId || (materials.length > 0 ? materials[0].id : '');
+      const newReference = `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+
       reset({
-        materialId: defaultMaterialId || (materials[0]?.id ?? ''),
+        materialId: initialMatId,
         projectId: '',
         quantity: 1,
         date: new Date().toISOString().split('T')[0],
-        reference: `GRN-${Math.floor(1000 + Math.random() * 9000)}`,
+        reference: newReference,
         notes: '',
       });
     }
-  }, [isOpen, defaultMaterialId, reset, materials]);
+  }, [isOpen, defaultMaterialId]); // Stable dependencies only
+
+  React.useEffect(() => {
+    if (isOpen && materials.length > 0 && !getValues('materialId')) {
+      setValue('materialId', defaultMaterialId || materials[0].id);
+    }
+  }, [isOpen, materials, defaultMaterialId, getValues, setValue]);
 
   const onSubmit = async (values: StockInFormValues) => {
     try {
@@ -184,8 +195,9 @@ export function StockInDialog({
           </Button>
           <Button
             type="submit"
-            variant="amber"
+            variant="default"
             isLoading={isSubmitting || stockInMutation.isPending}
+            className="font-semibold"
           >
             Confirm Stock-In
           </Button>

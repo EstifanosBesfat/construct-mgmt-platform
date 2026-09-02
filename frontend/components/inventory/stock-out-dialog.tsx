@@ -42,14 +42,22 @@ export function StockOutDialog({
   const { data: materialsData } = useMaterials({ limit: 100 });
   const { data: projectsData } = useProjects({ limit: 100 });
 
-  const materials = materialsData?.data ?? [];
-  const projects = projectsData?.data ?? [];
+  const materials = React.useMemo(() => materialsData?.data ?? [], [materialsData]);
+  const allProjects = React.useMemo(() => projectsData?.data ?? [], [projectsData]);
+
+  // Business Rule: Materials can ONLY be issued to active ONGOING projects
+  const ongoingProjects = React.useMemo(
+    () => allProjects.filter((p) => p.status === 'ONGOING'),
+    [allProjects]
+  );
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<StockOutFormValues>({
     resolver: zodResolver(stockOutSchema),
@@ -58,7 +66,7 @@ export function StockOutDialog({
       projectId: defaultProjectId || '',
       quantity: 1,
       date: new Date().toISOString().split('T')[0],
-      reference: `ISS-${Math.floor(1000 + Math.random() * 9000)}`,
+      reference: '',
       notes: '',
     },
   });
@@ -75,18 +83,37 @@ export function StockOutDialog({
     remainingStock <= Number(selectedMaterial.minimumStock) &&
     !isExceedingStock;
 
+  // Reset form ONLY when dialog opens
   React.useEffect(() => {
     if (isOpen) {
+      const initialMatId = defaultMaterialId || (materials.length > 0 ? materials[0].id : '');
+      const initialProjId = defaultProjectId || (ongoingProjects.length > 0 ? ongoingProjects[0].id : '');
+      const newReference = `ISS-${Math.floor(1000 + Math.random() * 9000)}`;
+
       reset({
-        materialId: defaultMaterialId || (materials[0]?.id ?? ''),
-        projectId: defaultProjectId || (projects[0]?.id ?? ''),
+        materialId: initialMatId,
+        projectId: initialProjId,
         quantity: 1,
         date: new Date().toISOString().split('T')[0],
-        reference: `ISS-${Math.floor(1000 + Math.random() * 9000)}`,
+        reference: newReference,
         notes: '',
       });
     }
-  }, [isOpen, defaultMaterialId, defaultProjectId, reset, materials, projects]);
+  }, [isOpen, defaultMaterialId, defaultProjectId]); // Stable dependencies only
+
+  // If materials loaded after modal opened and nothing selected yet, populate default
+  React.useEffect(() => {
+    if (isOpen && materials.length > 0 && !getValues('materialId')) {
+      setValue('materialId', defaultMaterialId || materials[0].id);
+    }
+  }, [isOpen, materials, defaultMaterialId, getValues, setValue]);
+
+  // If projects loaded after modal opened and nothing selected yet, populate default
+  React.useEffect(() => {
+    if (isOpen && ongoingProjects.length > 0 && !getValues('projectId')) {
+      setValue('projectId', defaultProjectId || ongoingProjects[0].id);
+    }
+  }, [isOpen, ongoingProjects, defaultProjectId, getValues, setValue]);
 
   const onSubmit = async (values: StockOutFormValues) => {
     try {
@@ -109,7 +136,7 @@ export function StockOutDialog({
       isOpen={isOpen}
       onClose={onClose}
       title="Record Stock-Out (Issue Material)"
-      description="Issue construction material from inventory to a specific project."
+      description="Issue construction material from warehouse inventory to an active ongoing project."
       maxWidth="md"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -138,16 +165,21 @@ export function StockOutDialog({
 
         <div>
           <label className="text-xs font-semibold text-foreground mb-1.5 block">
-            Assigned Project (Required) *
+            Destination Project *
           </label>
           <Select {...register('projectId')} error={errors.projectId?.message}>
-            <option value="">-- Select Destination Project --</option>
-            {projects.map((p) => (
+            <option value="">-- Select Project --</option>
+            {ongoingProjects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.code}) — {p.clientName}
+                {p.name} ({p.code})
               </option>
             ))}
           </Select>
+          {ongoingProjects.length === 0 && (
+            <p className="text-[11px] text-amber-600 font-medium mt-1">
+              No ongoing projects available.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -180,19 +212,19 @@ export function StockOutDialog({
           </div>
         </div>
 
-        {/* Live Rule 1 & Rule 2 Alert Preview */}
+        {/* Live Rejection Warning & Low Stock Notice */}
         {isExceedingStock && (
-          <div className="flex items-center space-x-2 rounded-xl p-3 bg-destructive/15 text-destructive border border-destructive/30 text-xs">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center space-x-2 rounded-lg p-3 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-medium">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
             <span>
-              <strong>Rejection Warning:</strong> Requested quantity ({enteredQuantity}) exceeds available stock ({availableStock}). The backend will reject this transaction (HTTP 422).
+              <strong>Rejection Warning:</strong> Requested quantity ({enteredQuantity}) exceeds available stock ({availableStock}).
             </span>
           </div>
         )}
 
         {isLowStockAfter && (
-          <div className="flex items-center space-x-2 rounded-xl p-3 bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center space-x-2 rounded-lg p-3 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
             <span>
               <strong>Low Stock Notice:</strong> Remaining stock ({remainingStock} {selectedMaterial?.unit}) will fall to or below the minimum threshold ({selectedMaterial?.minimumStock}).
             </span>
@@ -226,9 +258,10 @@ export function StockOutDialog({
           </Button>
           <Button
             type="submit"
-            variant="amber"
-            disabled={Boolean(isExceedingStock)}
+            variant="default"
+            disabled={Boolean(isExceedingStock) || ongoingProjects.length === 0}
             isLoading={isSubmitting || stockOutMutation.isPending}
+            className="font-semibold"
           >
             Confirm Stock-Out
           </Button>

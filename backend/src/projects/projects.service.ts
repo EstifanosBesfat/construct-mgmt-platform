@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, Project } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, Project, ProjectStatus } from '@prisma/client';
 import {
   buildPaginatedResponse,
   PaginatedResponseDto,
@@ -13,11 +17,6 @@ import {
 } from './dto/query-projects.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
-/**
- * A project row enriched with the aggregates the detail view needs. Decimal
- * columns stay as Prisma Decimals here; DecimalSerializerInterceptor converts
- * them to numbers on the way out.
- */
 export type ProjectDetail = Project & {
   boqValue: Prisma.Decimal;
   boqItemCount: number;
@@ -31,10 +30,13 @@ export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProjectDto): Promise<Project> {
-    // A duplicate `code` surfaces as Prisma error P2002, which
-    // PrismaExceptionFilter turns into HTTP 409. Note that soft-deleted
-    // projects still hold their code, since the unique index cannot ignore
-    // them.
+    // New projects can only start as PLANNED or ONGOING
+    if (dto.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'New projects cannot be created with COMPLETED status. Please select PLANNED or ONGOING.',
+      );
+    }
+
     return this.prisma.project.create({
       data: {
         name: dto.name,
@@ -44,12 +46,14 @@ export class ProjectsService {
         startDate: dto.startDate,
         endDate: dto.endDate,
         budget: new Prisma.Decimal(dto.budget),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        status: dto.status ?? ProjectStatus.PLANNED,
       },
     });
   }
 
-  async findAll(query: QueryProjectsDto): Promise<PaginatedResponseDto<Project>> {
+  async findAll(
+    query: QueryProjectsDto,
+  ): Promise<PaginatedResponseDto<Project>> {
     const { page, limit, status, search } = query;
     const sortBy = query.sortBy ?? ProjectSortField.CREATED_AT;
     const sortOrder = query.sortOrder ?? SortOrder.DESC;
@@ -62,7 +66,9 @@ export class ProjectsService {
             OR: [
               { name: { contains: search, mode: 'insensitive' as const } },
               { code: { contains: search, mode: 'insensitive' as const } },
-              { clientName: { contains: search, mode: 'insensitive' as const } },
+              {
+                clientName: { contains: search, mode: 'insensitive' as const },
+              },
             ],
           }
         : {}),
@@ -91,8 +97,6 @@ export class ProjectsService {
           _sum: { total: true },
           _count: true,
         }),
-        // "Latest" means the most recent progress date. createdAt breaks ties
-        // when several records share one date.
         this.prisma.progressRecord.findFirst({
           where: { projectId: id },
           orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
@@ -113,8 +117,6 @@ export class ProjectsService {
   async update(id: string, dto: UpdateProjectDto): Promise<Project> {
     const existing = await this.findActiveOrFail(id);
 
-    // UpdateProjectDto only sees the fields present in the request, so the
-    // date ordering rule is re-checked here against the stored values.
     const startDate = dto.startDate ?? existing.startDate;
     const endDate = dto.endDate ?? existing.endDate;
 
@@ -122,14 +124,31 @@ export class ProjectsService {
       throw new BadRequestException('endDate must be after startDate');
     }
 
+    // Forward-only status progression rule
+    if (dto.status && dto.status !== existing.status) {
+      const validTransitions: Record<ProjectStatus, ProjectStatus[]> = {
+        PLANNED: [
+          ProjectStatus.PLANNED,
+          ProjectStatus.ONGOING,
+          ProjectStatus.COMPLETED,
+        ],
+        ONGOING: [ProjectStatus.ONGOING, ProjectStatus.COMPLETED],
+        COMPLETED: [ProjectStatus.COMPLETED],
+      };
+
+      if (!validTransitions[existing.status].includes(dto.status)) {
+        throw new BadRequestException(
+          `Cannot change project status backwards from ${existing.status} to ${dto.status}. Status can only progress forward (Planned → Ongoing → Completed).`,
+        );
+      }
+    }
+
     return this.prisma.project.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.code !== undefined ? { code: dto.code } : {}),
-        ...(dto.clientName !== undefined
-          ? { clientName: dto.clientName }
-          : {}),
+        ...(dto.clientName !== undefined ? { clientName: dto.clientName } : {}),
         ...(dto.location !== undefined ? { location: dto.location } : {}),
         ...(dto.startDate !== undefined ? { startDate: dto.startDate } : {}),
         ...(dto.endDate !== undefined ? { endDate: dto.endDate } : {}),
@@ -142,22 +161,20 @@ export class ProjectsService {
   }
 
   /**
-   * Soft delete. The row is retained so that inventory transactions and audit
-   * entries referencing this project keep their context.
+   * Soft delete and free up the project code so it can be safely reused.
    */
   async remove(id: string): Promise<void> {
-    await this.findActiveOrFail(id);
+    const existing = await this.findActiveOrFail(id);
 
     await this.prisma.project.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        code: `${existing.code}_deleted_${Date.now()}`, // Frees up unique code constraint
+      },
     });
   }
 
-  /**
-   * Shared by the BOQ, progress and inventory modules so that they never
-   * attach records to a missing or soft-deleted project.
-   */
   async findActiveOrFail(id: string): Promise<Project> {
     const project = await this.prisma.project.findFirst({
       where: { id, deletedAt: null },

@@ -7,13 +7,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getPageCount(meta?: {
-  totalPages?: number;
-  pageCount?: number;
-}): number {
-  return meta?.pageCount ?? meta?.totalPages ?? 1;
-}
-
 export function formatCurrency(value: number | string | null | undefined, currency: string = 'ETB'): string {
   if (value === null || value === undefined || isNaN(Number(value))) {
     return '0.00 ' + currency;
@@ -76,13 +69,13 @@ export function formatDateTime(dateString: string | Date | null | undefined): st
 export function getStatusBadgeClass(status: string): string {
   switch (status?.toUpperCase()) {
     case 'COMPLETED':
-      return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
     case 'ONGOING':
-      return 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+      return 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-800';
     case 'PLANNED':
-      return 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
+      return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     default:
-      return 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30';
+      return 'bg-muted text-muted-foreground border-border';
   }
 }
 

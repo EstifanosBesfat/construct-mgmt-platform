@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, ProjectStatus } from '@prisma/client';
 import {
   buildPaginatedResponse,
   PaginatedResponseDto,
@@ -11,7 +15,7 @@ import { QueryProgressDto } from './dto/query-progress.dto';
 import { UpdateProgressDto } from './dto/update-progress.dto';
 
 const projectSelect = {
-  select: { id: true, name: true, code: true },
+  select: { id: true, name: true, code: true, status: true },
 } satisfies Prisma.ProgressRecordInclude['project'];
 
 const progressInclude = {
@@ -30,7 +34,27 @@ export class ProgressService {
   ) {}
 
   async create(dto: CreateProgressDto): Promise<ProgressRecordWithProject> {
-    await this.projectsService.findActiveOrFail(dto.projectId);
+    const project = await this.projectsService.findActiveOrFail(dto.projectId);
+
+    // Cannot log milestone on completed projects
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot log milestone progress on a COMPLETED project. The project is already finalized.',
+      );
+    }
+
+    // Progress percentage cannot go backwards
+    const latestProgress = await this.prisma.progressRecord.findFirst({
+      where: { projectId: dto.projectId },
+      orderBy: [{ percentage: 'desc' }, { date: 'desc' }],
+    });
+
+    const newPercentage = Number(dto.percentage);
+    if (latestProgress && newPercentage < Number(latestProgress.percentage)) {
+      throw new BadRequestException(
+        `Progress percentage cannot decrease. New milestone (${newPercentage}%) cannot be lower than current project progress (${latestProgress.percentage}%).`,
+      );
+    }
 
     return this.prisma.progressRecord.create({
       data: {
@@ -61,8 +85,6 @@ export class ProgressService {
       this.prisma.progressRecord.findMany({
         where,
         include: progressInclude,
-        // Plan: return records ordered by date DESC. createdAt breaks ties
-        // when several records share one date, matching GET /projects/:id.
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
         skip: query.skip,
         take: limit,
@@ -84,7 +106,13 @@ export class ProgressService {
     const existing = await this.findOrFail(id);
 
     const projectId = dto.projectId ?? existing.projectId;
-    await this.projectsService.findActiveOrFail(projectId);
+    const project = await this.projectsService.findActiveOrFail(projectId);
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot update milestone progress on a COMPLETED project.',
+      );
+    }
 
     return this.prisma.progressRecord.update({
       where: { id },
@@ -105,7 +133,15 @@ export class ProgressService {
 
   async remove(id: string): Promise<void> {
     const existing = await this.findOrFail(id);
-    await this.projectsService.findActiveOrFail(existing.projectId);
+    const project = await this.projectsService.findActiveOrFail(
+      existing.projectId,
+    );
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Cannot delete milestone progress from a COMPLETED project.',
+      );
+    }
 
     await this.prisma.progressRecord.delete({ where: { id } });
   }
@@ -122,8 +158,6 @@ export class ProgressService {
       );
     }
 
-    // Hide records that belong to a soft-deleted project, matching every
-    // other read in the API.
     await this.projectsService.findActiveOrFail(record.projectId);
 
     return record;

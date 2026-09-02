@@ -1,16 +1,18 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Boxes,
   Plus,
   Search,
   Pencil,
   Trash2,
-  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
-  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,157 +20,106 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog } from '@/components/ui/dialog';
-import { ColumnDef } from '@tanstack/react-table';
 import { PageHeader } from '@/components/layout/page-header';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 import { useMaterials, useDeleteMaterial } from '@/hooks/use-materials';
 import { MaterialFormDialog } from '@/components/materials/material-form-dialog';
 import { StockInDialog } from '@/components/inventory/stock-in-dialog';
 import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
 import { MaterialWithStockFlag } from '@/types';
-import { DataTable } from '@/components/ui/data-table';
-import { getPageCount } from '@/lib/utils';
+import { exportToStyledExcel, exportToStyledPdf, exportToCsv } from '@/lib/export-utils';
+import { TableSortHeader, useTableSort } from '@/components/ui/table-sort';
 
-export default function MaterialsPage() {
-  const [search, setSearch] = React.useState('');
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function MaterialsTableContent() {
+  const searchParams = useSearchParams();
+  const highlightParam = searchParams.get('highlight');
+  const searchParam = searchParams.get('search');
+
+  const [search, setSearch] = React.useState(searchParam || '');
   const [lowStockOnly, setLowStockOnly] = React.useState(false);
   const [page, setPage] = React.useState(1);
-  const limit = 10;
+  const [pageSize, setPageSize] = React.useState(10);
+
+  // Track highlighted material
+  const [selectedMaterialId, setSelectedMaterialId] = React.useState<string | null>(highlightParam);
+  const [exportMenuOpen, setExportMenuOpen] = React.useState(false);
+  const highlightTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [editingMaterial, setEditingMaterial] = React.useState<MaterialWithStockFlag | null>(null);
   const [deletingMaterialId, setDeletingMaterialId] = React.useState<string | null>(null);
 
-  // Quick Action Dialogs for specific material
   const [quickStockInId, setQuickStockInId] = React.useState<string | null>(null);
   const [quickStockOutId, setQuickStockOutId] = React.useState<string | null>(null);
 
+  const { sortKey, sortDirection, toggleSort, sortItems } = useTableSort<MaterialWithStockFlag>(
+    null,
+    null,
+    {
+      currentStock: (m) => Number(m.currentStock),
+      minimumStock: (m) => Number(m.minimumStock),
+      status: (m) => (m.isLowStock ? 0 : 1),
+    }
+  );
+
   const { data: materialsData, isLoading } = useMaterials({
     page,
-    limit,
+    limit: pageSize,
     search: search || undefined,
     lowStock: lowStockOnly ? true : undefined,
   });
 
   const deleteMutation = useDeleteMaterial();
-
-  const materials = materialsData?.data ?? [];
+  const rawMaterials = materialsData?.data ?? [];
   const meta = materialsData?.meta;
-  const pageCount = getPageCount(meta);
+  const materials = React.useMemo(() => sortItems(rawMaterials), [rawMaterials, sortItems]);
 
-  const columns = React.useMemo<ColumnDef<MaterialWithStockFlag>[]>(
-    () => [
-      {
-        accessorKey: 'code',
-        header: 'Code',
-        cell: ({ row }) => (
-          <span className="font-mono font-bold text-xs text-sky-500">
-            {row.original.code}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'name',
-        header: 'Material Name',
-        cell: ({ row }) => (
-          <span className="font-semibold text-foreground">{row.original.name}</span>
-        ),
-      },
-      {
-        accessorKey: 'unit',
-        header: 'Unit',
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground font-medium">
-            {row.original.unit}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'currentStock',
-        header: 'Current Stock',
-        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-        cell: ({ row }) => (
-          <span className="text-xs font-bold text-foreground">
-            {row.original.currentStock} {row.original.unit}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'minimumStock',
-        header: 'Min Threshold',
-        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground font-medium">
-            {row.original.minimumStock} {row.original.unit}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'isLowStock',
-        header: 'Stock Status',
-        cell: ({ row }) =>
-          row.original.isLowStock ? (
-            <Badge variant="warning" className="font-bold flex items-center w-fit">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Low Stock
-            </Badge>
-          ) : (
-            <Badge variant="success" className="font-medium flex items-center w-fit">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Healthy
-            </Badge>
-          ),
-      },
-      {
-        id: 'actions',
-        header: 'Actions',
-        enableSorting: false,
-        meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-        cell: ({ row }) => (
-          <div className="flex items-center justify-end space-x-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setQuickStockInId(row.original.id)}
-              className="h-7 px-2 text-xs rounded-lg text-emerald-500 hover:bg-emerald-500/10"
-              title="Quick Stock-In"
-            >
-              <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-              In
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setQuickStockOutId(row.original.id)}
-              className="h-7 px-2 text-xs rounded-lg text-rose-500 hover:bg-rose-500/10"
-              title="Quick Stock-Out"
-            >
-              <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
-              Out
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setEditingMaterial(row.original)}
-              className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-              title="Edit Material"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDeletingMaterialId(row.original.id)}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              title="Delete Material"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    []
-  );
+  const totalResults = meta?.total ?? materials.length;
+  const totalPages = Math.ceil(totalResults / pageSize) || 1;
+
+  const triggerHighlight = React.useCallback((id: string) => {
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    setSelectedMaterialId(id);
+
+    highlightTimeoutRef.current = setTimeout(() => {
+      setSelectedMaterialId(null);
+    }, 3000);
+  }, []);
+
+  React.useEffect(() => {
+    if (highlightParam) {
+      triggerHighlight(highlightParam);
+
+      const scrollTimer = setTimeout(() => {
+        const rowEl = document.getElementById(`material-row-${highlightParam}`);
+        if (rowEl) {
+          rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 250);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [highlightParam, triggerHighlight]);
+
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDeleteConfirm = async () => {
     if (!deletingMaterialId) return;
@@ -176,164 +127,404 @@ export default function MaterialsPage() {
     setDeletingMaterialId(null);
   };
 
+  const columnsDef = [
+    { header: 'Material Code', key: 'code', width: 16, align: 'left' as const },
+    { header: 'Material Name', key: 'name', width: 28, align: 'left' as const },
+    { header: 'Unit', key: 'unit', width: 12, align: 'center' as const },
+    { header: 'Current Stock', key: 'currentStock', width: 16, align: 'right' as const, format: 'number' as const },
+    { header: 'Min Threshold', key: 'minimumStock', width: 16, align: 'right' as const, format: 'number' as const },
+    { header: 'Stock Status', key: 'status', width: 16, align: 'center' as const },
+  ];
+
+  const exportData = materials.map((m) => ({
+    code: m.code,
+    name: m.name,
+    unit: m.unit,
+    currentStock: Number(m.currentStock),
+    minimumStock: Number(m.minimumStock),
+    status: m.isLowStock ? 'LOW STOCK' : 'HEALTHY',
+  }));
+
+  const handleExportExcel = () => {
+    setExportMenuOpen(false);
+    exportToStyledExcel({
+      title: 'Materials Inventory & Warehouse Stock Report',
+      subtitle: 'ConstructCMS Real-time Stock Ledger & Safety Thresholds',
+      filename: `ConstructCMS_Materials_${new Date().toISOString().slice(0, 10)}`,
+      columns: columnsDef,
+      data: exportData,
+    });
+  };
+
+  const handleExportPdf = () => {
+    setExportMenuOpen(false);
+    exportToStyledPdf({
+      title: 'Materials Inventory Report',
+      subtitle: 'Warehouse Stock Ledger & Reorder Thresholds',
+      filename: `ConstructCMS_Materials_${new Date().toISOString().slice(0, 10)}`,
+      columns: columnsDef,
+      data: exportData,
+    });
+  };
+
+  const handleExportCsv = () => {
+    setExportMenuOpen(false);
+    exportToCsv(exportData, `ConstructCMS_Materials_${new Date().toISOString().slice(0, 10)}`);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Top Header */}
       <PageHeader
-        title="Materials"
-        description="Stock levels and reorder minimums."
-        actions={
-          <Button
-            variant="amber"
-            size="sm"
-            onClick={() => setCreateDialogOpen(true)}
-            className="rounded-xl shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Material
-          </Button>
-        }
+        title="Materials Catalogue"
+        description="Warehouse stock inventory, minimum reorder thresholds, and material ledger."
       />
 
-      {/* Filter and Search Controls */}
-      <Card className="glass-panel border-border/80">
-        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search by code, material name..."
-              className="pl-9 bg-background/50"
-            />
+      {/* Subcategory Status Tabs */}
+      <div className="flex items-center space-x-1 border-b border-border pb-2 text-xs">
+        <button
+          onClick={() => {
+            setLowStockOnly(false);
+            setPage(1);
+          }}
+          className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+            !lowStockOnly
+              ? 'bg-[#FFF7ED] text-[#C2410C] dark:bg-orange-950/40 dark:text-orange-300 font-semibold'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          All Materials
+        </button>
+        <button
+          onClick={() => {
+            setLowStockOnly(true);
+            setPage(1);
+          }}
+          className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+            lowStockOnly
+              ? 'bg-[#FFF7ED] text-[#C2410C] dark:bg-orange-950/40 dark:text-orange-300 font-semibold'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          Low Stock Alerts
+        </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1">
+        <div className="relative w-56 sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search materials..."
+            className="pl-8 h-7 text-xs bg-card"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2 relative">
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="font-medium"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Export
+            </Button>
+
+            {exportMenuOpen && (
+              <div
+                className="absolute right-0 mt-1 z-30 w-44 rounded-md border border-border bg-card shadow-lg p-1 text-xs animate-in fade-in-0 zoom-in-95"
+                onMouseLeave={() => setExportMenuOpen(false)}
+              >
+                <button
+                  onClick={handleExportExcel}
+                  className="w-full flex items-center px-2.5 py-1.5 text-left rounded hover:bg-muted text-foreground transition-colors cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                  <span>Excel Sheet (.xlsx)</span>
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  className="w-full flex items-center px-2.5 py-1.5 text-left rounded hover:bg-muted text-foreground transition-colors cursor-pointer"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-2 text-red-600" />
+                  <span>PDF Document (.pdf)</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant={!lowStockOnly ? 'amber' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setLowStockOnly(false);
-                setPage(1);
-              }}
-              className="text-xs h-8 rounded-lg"
-            >
-              All Materials
-            </Button>
-            <Button
-              variant={lowStockOnly ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setLowStockOnly(true);
-                setPage(1);
-              }}
-              className="text-xs h-8 rounded-lg"
-            >
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Low Stock Only
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            variant="default"
+            size="xs"
+            onClick={() => setCreateDialogOpen(true)}
+            className="font-semibold"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            New Material
+          </Button>
+        </div>
+      </div>
 
-      {/* Materials Table View */}
-      <Card className="glass-panel border-border/80">
+      {/* Materials Table */}
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-2">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                <Skeleton key={i} className="h-9 w-full rounded-md" />
               ))}
             </div>
           ) : materials.length === 0 ? (
-            <div className="text-center py-8 px-4">
-              <Boxes className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="text-base font-bold text-foreground">No materials found</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                {search || lowStockOnly
-                  ? 'No materials match your filter criteria.'
-                  : 'Get started by creating your first material in the catalogue.'}
+            <div className="text-center py-12 px-4">
+              <Boxes className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+              <p className="text-xs font-semibold text-foreground">No materials found</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Try clearing search or filter parameters.
               </p>
-              {!search && !lowStockOnly && (
-                <Button
-                  variant="amber"
-                  size="sm"
-                  onClick={() => setCreateDialogOpen(true)}
-                  className="mt-4 rounded-xl"
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add Material
-                </Button>
-              )}
             </div>
           ) : (
-            <DataTable
-              columns={columns}
-              data={materials}
-              getRowId={(material) => material.id}
-              pagination={
-                meta
-                  ? {
-                      page,
-                      pageCount,
-                      total: meta.total,
-                      pageSize: meta.limit,
-                      onPageChange: setPage,
-                    }
-                  : undefined
-              }
-            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="text-[11px] uppercase text-muted-foreground bg-muted/60 border-b border-border">
+                  <tr>
+                    <TableSortHeader
+                      label="Material"
+                      sortKey="name"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                    />
+                    <TableSortHeader
+                      label="Code"
+                      sortKey="code"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                    />
+                    <TableSortHeader
+                      label="Unit"
+                      sortKey="unit"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                    />
+                    <TableSortHeader
+                      label="Current Stock"
+                      sortKey="currentStock"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                      align="right"
+                    />
+                    <TableSortHeader
+                      label="Min Threshold"
+                      sortKey="minimumStock"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                      align="right"
+                    />
+                    <TableSortHeader
+                      label="Stock Status"
+                      sortKey="status"
+                      currentSortKey={sortKey}
+                      currentDirection={sortDirection}
+                      onSort={toggleSort}
+                    />
+                    <th className="px-3 py-2 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {materials.map((mat) => {
+                    const initials = getInitials(mat.name);
+                    const isHighlighted = selectedMaterialId === mat.id || selectedMaterialId === mat.code;
+
+                    return (
+                      <tr
+                        key={mat.id}
+                        id={`material-row-${mat.id}`}
+                        onClick={() => triggerHighlight(mat.id)}
+                        className={`transition-all duration-500 cursor-pointer ${
+                          isHighlighted
+                            ? 'bg-orange-50/90 dark:bg-orange-950/60 ring-2 ring-[#EA580C] dark:ring-orange-500 shadow-xs font-medium'
+                            : 'hover:bg-muted/40'
+                        }`}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className={`h-6 w-6 rounded-md font-semibold flex items-center justify-center text-[10px] shrink-0 transition-colors duration-500 ${
+                                isHighlighted
+                                  ? 'bg-[#EA580C] text-white'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {initials}
+                            </div>
+                            <span className="font-medium text-foreground">{mat.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-muted-foreground">
+                          {mat.code}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">{mat.unit}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-foreground">
+                          {mat.currentStock} <span className="text-[10px] text-muted-foreground">{mat.unit}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {mat.minimumStock} <span className="text-[10px]">{mat.unit}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {mat.isLowStock ? (
+                            <Badge variant="warning" className="text-[10px] py-0">
+                              ⚠️ Low Stock
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" className="text-[10px] py-0">
+                              Healthy
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <div
+                            className="flex items-center justify-end space-x-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => setQuickStockInId(mat.id)}
+                              className="h-6 px-1.5 text-emerald-700 dark:text-emerald-400"
+                              title="Stock In"
+                            >
+                              +In
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => setQuickStockOutId(mat.id)}
+                              className="h-6 px-1.5 text-red-700 dark:text-red-400"
+                              title="Stock Out"
+                            >
+                              -Out
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setEditingMaterial(mat)}
+                              className="h-6 px-1.5 text-muted-foreground hover:text-blue-600"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setDeletingMaterialId(mat.id)}
+                              className="h-6 px-1.5 text-muted-foreground hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
+
+          {/* Pagination Bar */}
+          <PaginationBar
+            currentPage={page}
+            totalPages={totalPages}
+            totalResults={totalResults}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
-      {/* Add / Edit Material Dialog */}
+      {/* Dialog Modals */}
       <MaterialFormDialog
-        isOpen={createDialogOpen || Boolean(editingMaterial)}
-        onClose={() => {
-          setCreateDialogOpen(false);
-          setEditingMaterial(null);
-        }}
+        isOpen={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+      />
+      <MaterialFormDialog
+        isOpen={!!editingMaterial}
+        onClose={() => setEditingMaterial(null)}
         materialToEdit={editingMaterial}
+      />
+      <StockInDialog
+        isOpen={!!quickStockInId}
+        onClose={() => setQuickStockInId(null)}
+        defaultMaterialId={quickStockInId || undefined}
+      />
+      <StockOutDialog
+        isOpen={!!quickStockOutId}
+        onClose={() => setQuickStockOutId(null)}
+        defaultMaterialId={quickStockOutId || undefined}
       />
 
       {/* Delete Confirmation Dialog */}
       <Dialog
-        isOpen={Boolean(deletingMaterialId)}
+        isOpen={!!deletingMaterialId}
         onClose={() => setDeletingMaterialId(null)}
         title="Delete Material"
-        description="Are you sure you want to delete this material? Note: materials with existing stock movements cannot be deleted to protect audit history."
-        maxWidth="sm"
       >
-        <div className="flex items-center justify-end space-x-3 pt-4">
-          <Button variant="outline" onClick={() => setDeletingMaterialId(null)}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            isLoading={deleteMutation.isPending}
-            onClick={handleDeleteConfirm}
-          >
-            Delete Material
-          </Button>
+        <div className="space-y-3 text-xs">
+          <p className="text-muted-foreground">
+            Are you sure you want to delete this material catalogue entry? This action cannot be undone if there are existing inventory stock movements linked to it.
+          </p>
+          <div className="flex justify-end space-x-2 pt-2">
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => setDeletingMaterialId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="xs"
+              onClick={handleDeleteConfirm}
+              isLoading={deleteMutation.isPending}
+            >
+              Confirm Delete
+            </Button>
+          </div>
         </div>
       </Dialog>
-
-      {/* Stock In Quick Modal */}
-      <StockInDialog
-        isOpen={Boolean(quickStockInId)}
-        onClose={() => setQuickStockInId(null)}
-        defaultMaterialId={quickStockInId || undefined}
-      />
-
-      {/* Stock Out Quick Modal */}
-      <StockOutDialog
-        isOpen={Boolean(quickStockOutId)}
-        onClose={() => setQuickStockOutId(null)}
-        defaultMaterialId={quickStockOutId || undefined}
-      />
     </div>
+  );
+}
+
+export default function MaterialsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="space-y-3">
+          <PageHeader title="Materials Catalogue" description="Loading materials catalogue..." />
+          <div className="p-4 space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full rounded-md" />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <MaterialsTableContent />
+    </React.Suspense>
   );
 }

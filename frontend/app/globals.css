@@ -4,48 +4,50 @@
 
 @layer base {
   :root {
-    --background: 204 40% 97%;
-    --foreground: 215 28% 17%;
-    --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 204 40% 94%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 204 30% 94%;
-    --muted-foreground: 215 16% 42%;
-    --accent: 199 80% 94%;
-    --accent-foreground: 201 90% 27%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 203 30% 88%;
-    --input: 203 30% 88%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
+    /* Construction Industry Palette (Light) */
+    --background: 210 20% 98%;        /* #F8FAFC Clean Light Canvas */
+    --foreground: 222 47% 11%;        /* #0F172A Dark Slate Text */
+    --card: 0 0% 100%;               /* #FFFFFF Pure White Cards */
+    --card-foreground: 222 47% 11%;   /* #0F172A */
+    --popover: 0 0% 100%;            /* #FFFFFF */
+    --popover-foreground: 222 47% 11%;
+    --primary: 20 90% 48%;           /* #EA580C Construction Safety Orange */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF Crisp White Text */
+    --secondary: 210 20% 95%;        /* #F1F5F9 Slate Light */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 95%;            /* #F1F5F9 */
+    --muted-foreground: 215 16% 47%;  /* #64748B Industrial Gray */
+    --accent: 28 100% 96%;           /* #FFF7ED Soft Orange Accent */
+    --accent-foreground: 20 90% 38%;  /* #C2410C */
+    --destructive: 0 84% 60%;        /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 88%;           /* #E2E8F0 */
+    --input: 214 20% 88%;
+    --ring: 20 90% 48%;              /* #EA580C */
+    --radius: 0.5rem;                /* 8px Enterprise Radius */
   }
 
   .dark {
-    --background: 215 32% 8%;
-    --foreground: 204 40% 96%;
-    --card: 215 28% 11%;
-    --card-foreground: 204 40% 96%;
-    --popover: 215 28% 11%;
-    --popover-foreground: 204 40% 96%;
-    --primary: 199 89% 48%;
+    /* Construction Industry Palette (Dark) */
+    --background: 222 47% 9%;        /* #0B0F19 Dark Canvas */
+    --foreground: 210 20% 98%;       /* #F8FAFC Text */
+    --card: 222 47% 13%;            /* #131B2E Dark Steel Slate */
+    --card-foreground: 210 20% 98%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 20 90% 50%;          /* #F97316 Safety Orange */
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 25% 16%;
-    --secondary-foreground: 204 40% 96%;
-    --muted: 215 25% 14%;
-    --muted-foreground: 215 16% 65%;
-    --accent: 199 50% 18%;
-    --accent-foreground: 199 90% 80%;
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 20% 20%;
-    --input: 215 20% 20%;
-    --ring: 199 89% 48%;
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 20% 65%; /* #94A3B8 */
+    --accent: 20 80% 18%;
+    --accent-foreground: 28 100% 85%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 20%;          /* #1E293B */
+    --input: 217 33% 20%;
+    --ring: 20 90% 50%;
   }
 }
 
@@ -54,22 +56,19 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased text-sm selection:bg-sky-500/25 selection:text-sky-950;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-background text-foreground font-sans antialiased text-xs md:text-sm selection:bg-orange-500/20 selection:text-orange-900 dark:selection:text-orange-200;
   }
 }
 
-.glass-panel {
-  @apply bg-card/90 backdrop-blur-md border border-border/80 shadow-sm;
+/* Crisp Enterprise Card Style */
+.ent-card {
+  @apply bg-card text-card-foreground border border-border rounded-lg shadow-none;
 }
 
-.glass-panel-hover {
-  @apply transition-all duration-200 hover:border-sky-500/40 hover:shadow-md hover:shadow-sky-500/5;
-}
-
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -77,10 +76,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(125, 211, 252, 0.45);
+  background: rgba(100, 116, 139, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(14, 165, 233, 0.55);
+  background: rgba(100, 116, 139, 0.45);
 }

@@ -6,17 +6,7 @@ import { toast } from 'sonner';
 export function useProjectBoq(projectId: string) {
   return useQuery({
     queryKey: ['boq', projectId],
-    queryFn: async () => {
-      const result = await api.get<BoqList>(`/projects/${projectId}/boq`);
-      return {
-        ...result,
-        items: result.items ?? result.data ?? [],
-        summary: {
-          ...result.summary,
-          totalBoqValue: result.summary.totalBoqValue ?? result.summary.totalValue,
-        },
-      };
-    },
+    queryFn: () => api.get<BoqList>(`/projects/${projectId}/boq`),
     enabled: Boolean(projectId),
   });
 }

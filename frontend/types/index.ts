@@ -63,7 +63,6 @@ export interface BoqSummary {
   projectId: string;
   itemCount: number;
   totalValue: number;
-  /** Alias kept for existing UI call sites; same value as totalValue. */
   totalBoqValue?: number;
 }
 
@@ -194,6 +193,54 @@ export interface UpdateProgressInput {
   notes?: string;
 }
 
+export interface ProjectPerformanceItem {
+  id: string;
+  name: string;
+  code: string;
+  clientName: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  budget: number;
+  boqValue: number;
+  latestProgress: number | null;
+  status: ProjectStatus;
+}
+
+export interface RecentTransactionItem {
+  id: string;
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  projectCode: string | null;
+  projectName: string | null;
+  type: TransactionType;
+  quantity: number;
+  date: string;
+  reference: string;
+}
+
+export interface RecentProgressItem {
+  id: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  date: string;
+  description: string;
+  percentage: number;
+  notes: string | null;
+}
+
+export interface MaterialStockSummaryItem {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  currentStock: number;
+  minimumStock: number;
+  isLowStock: boolean;
+}
+
 export interface DashboardSummary {
   projects: {
     total: number;
@@ -205,50 +252,10 @@ export interface DashboardSummary {
     totalMaterials: number;
     lowStockCount: number;
   };
-  projectPerformance: Array<{
-    id: string;
-    name: string;
-    code: string;
-    clientName: string;
-    location: string;
-    startDate: string;
-    endDate: string;
-    budget: number;
-    boqValue: number;
-    latestProgress: number | null;
-    status: ProjectStatus;
-  }>;
-  recentTransactions: Array<{
-    id: string;
-    materialCode: string;
-    materialName: string;
-    unit: string;
-    projectCode: string | null;
-    projectName: string | null;
-    type: TransactionType;
-    quantity: number;
-    date: string;
-    reference: string;
-  }>;
-  recentProgress: Array<{
-    id: string;
-    projectId: string;
-    projectCode: string;
-    projectName: string;
-    date: string;
-    description: string;
-    percentage: number;
-    notes: string | null;
-  }>;
-  materialStockSummary: Array<{
-    id: string;
-    code: string;
-    name: string;
-    unit: string;
-    currentStock: number;
-    minimumStock: number;
-    isLowStock: boolean;
-  }>;
+  projectPerformance: ProjectPerformanceItem[];
+  recentTransactions: RecentTransactionItem[];
+  recentProgress: RecentProgressItem[];
+  materialStockSummary: MaterialStockSummaryItem[];
 }
 
 export interface PaginatedResponse<T> {
@@ -257,8 +264,7 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
-    totalPages: number;
-    pageCount?: number;
+    pageCount: number;
     hasPreviousPage: boolean;
     hasNextPage: boolean;
   };

@@ -33,7 +33,8 @@ export class CreateBoqItemDto {
   unit: string;
 
   @ApiProperty({
-    description: 'Quantity. Must be greater than zero. At most 3 decimal places.',
+    description:
+      'Quantity. Must be greater than zero. At most 3 decimal places.',
     example: 860,
     minimum: 0.001,
   })

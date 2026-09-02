@@ -22,7 +22,8 @@ export class BoqItemEntity {
   @ApiProperty({
     type: Number,
     example: 4171000,
-    description: 'Computed server-side as quantity × unitPrice, rounded to 2 decimals',
+    description:
+      'Computed server-side as quantity × unitPrice, rounded to 2 decimals',
   })
   total: number;
 

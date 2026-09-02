@@ -72,9 +72,9 @@ export function useStockOut() {
       }
     },
     onError: (error: any) => {
-      if (error.statusCode === 422) {
+      if (error.statusCode === 422 || error.message?.includes('exceeds')) {
         toast.error(
-          `Transaction Rejected: ${error.message || 'Requested quantity exceeds available stock!'}`
+          `Rejection Warning: ${error.message || 'Requested quantity exceeds available stock!'}`
         );
       } else {
         toast.error(error.message || 'Failed to record stock-out');

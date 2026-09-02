@@ -87,6 +87,9 @@ export class DashboardService {
     const recentTransactionsRaw =
       await this.prisma.inventoryTransaction.findMany({
         take: 6,
+        where: {
+          OR: [{ projectId: null }, { project: { deletedAt: null } }],
+        },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
         include: {
           material: {
@@ -114,6 +117,9 @@ export class DashboardService {
     // 5. Recent Progress Records
     const recentProgressRaw = await this.prisma.progressRecord.findMany({
       take: 6,
+      where: {
+        project: { deletedAt: null },
+      },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       include: {
         project: {

@@ -5,14 +5,8 @@ import Link from 'next/link';
 import {
   GanttChartSquare,
   Calendar,
-  Building2,
-  ExternalLink,
-  Clock,
-  CheckCircle2,
-  TrendingUp,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
@@ -24,7 +18,6 @@ export default function TimelinePage() {
   const { data: projectsData, isLoading } = useProjects({ limit: 100 });
   const projects = projectsData?.data ?? [];
 
-  // Calculate earliest start and latest end across all projects
   const dates = projects.flatMap((p) => [parseISO(p.startDate), parseISO(p.endDate)]);
   const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((d) => d.getTime()))) : new Date('2025-01-01');
   const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map((d) => d.getTime()))) : new Date('2027-12-31');
@@ -32,70 +25,61 @@ export default function TimelinePage() {
   const totalDays = Math.max(differenceInDays(maxDate, minDate), 1);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <PageHeader
-        title="Timeline"
-        description="Project start and end dates on one schedule."
+        title="Project Timeline & Gantt Schedule"
+        description="Visual roadmap tracking project start dates and completion milestones."
       />
 
-      {/* Legend & Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-panel p-4 flex items-center space-x-3">
-          <div className="h-3 w-3 rounded-full bg-slate-400 shrink-0" />
-          <div className="text-xs">
-            <span className="font-bold text-foreground">Planned Projects</span>
-            <p className="text-muted-foreground">Scheduled contract start dates</p>
+      {/* Legend & Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="bg-card border border-border rounded-lg p-2.5 flex items-center space-x-2.5 text-xs">
+          <div className="h-2.5 w-2.5 rounded-full bg-[#64748B] dark:bg-[#94A3B8] shrink-0" />
+          <div>
+            <span className="font-semibold text-foreground">Planned</span>
+            <p className="text-[10px] text-muted-foreground">Contract scheduled</p>
           </div>
-        </Card>
-        <Card className="glass-panel p-4 flex items-center space-x-3">
-          <div className="h-3 w-3 rounded-full bg-blue-500 shrink-0" />
-          <div className="text-xs">
-            <span className="font-bold text-foreground">Ongoing Active Sites</span>
-            <p className="text-muted-foreground">Active construction execution</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-2.5 flex items-center space-x-2.5 text-xs">
+          <div className="h-2.5 w-2.5 rounded-full bg-[#EA580C] dark:bg-[#FB923C] shrink-0" />
+          <div>
+            <span className="font-semibold text-foreground">Ongoing Active</span>
+            <p className="text-[10px] text-muted-foreground">Active construction site</p>
           </div>
-        </Card>
-        <Card className="glass-panel p-4 flex items-center space-x-3">
-          <div className="h-3 w-3 rounded-full bg-emerald-500 shrink-0" />
-          <div className="text-xs">
-            <span className="font-bold text-foreground">Completed Sites</span>
-            <p className="text-muted-foreground">Successfully handed over</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-2.5 flex items-center space-x-2.5 text-xs">
+          <div className="h-2.5 w-2.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+          <div>
+            <span className="font-semibold text-foreground">Completed</span>
+            <p className="text-[10px] text-muted-foreground">Handed over</p>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Gantt Visual Chart Card */}
-      <Card className="glass-panel border-border/80">
-        <CardHeader>
-          <CardTitle className="text-base font-bold flex items-center space-x-2">
-            <GanttChartSquare className="h-5 w-5 text-sky-500" />
-            <span>Master Schedule Timeline ({formatDate(minDate)} — {formatDate(maxDate)})</span>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Bar width represents total duration; inner colored bar shows current completion progress.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Gantt Chart */}
+      <Card>
+        <CardContent className="p-3.5">
           {isLoading ? (
-            <div className="space-y-4 py-6">
+            <div className="space-y-3 py-4">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                <Skeleton key={i} className="h-10 w-full rounded" />
               ))}
             </div>
           ) : projects.length === 0 ? (
-            <p className="text-center text-xs text-muted-foreground py-12">
+            <p className="text-center text-xs text-muted-foreground py-8">
               No projects available to plot on timeline.
             </p>
           ) : (
-            <div className="space-y-6 overflow-x-auto min-w-[700px] py-4">
-              {/* Timeline Header Date Marks */}
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground border-b border-border pb-2 px-1">
+            <div className="space-y-4 overflow-x-auto min-w-[650px] py-1">
+              {/* Timeline Header */}
+              <div className="flex justify-between text-[10px] font-mono text-muted-foreground border-b border-border pb-1.5 px-1">
                 <span>{formatDate(minDate)}</span>
                 <span>Midpoint</span>
                 <span>{formatDate(maxDate)}</span>
               </div>
 
-              {/* Project Gantt Bars */}
-              <div className="space-y-5">
+              {/* Gantt Rows */}
+              <div className="space-y-3">
                 {projects.map((project) => {
                   const startDate = parseISO(project.startDate);
                   const endDate = parseISO(project.endDate);
@@ -104,60 +88,48 @@ export default function TimelinePage() {
                   const duration = Math.max(differenceInDays(endDate, startDate), 1);
 
                   const leftPct = (startOffset / totalDays) * 100;
-                  const widthPct = Math.max((duration / totalDays) * 100, 4);
+                  const widthPct = Math.max((duration / totalDays) * 100, 5);
 
                   const getBarBg = (status: string) => {
                     switch (status) {
                       case 'COMPLETED':
-                        return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500';
+                        return 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300';
                       case 'ONGOING':
-                        return 'bg-blue-500/20 border-blue-500/50 text-blue-500';
+                        return 'bg-[#FFF7ED] border-[#EA580C] text-[#C2410C] dark:bg-orange-950/60 dark:border-orange-600 dark:text-orange-300 font-semibold';
                       default:
-                        return 'bg-slate-500/20 border-slate-500/50 text-slate-500';
-                    }
-                  };
-
-                  const getProgressBar = (status: string) => {
-                    switch (status) {
-                      case 'COMPLETED':
-                        return 'bg-emerald-500';
-                      case 'ONGOING':
-                        return 'bg-blue-500';
-                      default:
-                        return 'bg-slate-400';
+                        return 'bg-muted border-border text-muted-foreground dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-300';
                     }
                   };
 
                   return (
-                    <div key={project.id} className="space-y-1.5 group">
+                    <div key={project.id} className="space-y-1 group">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-sky-500">
+                          <span className="font-mono text-[11px] font-semibold text-muted-foreground">
                             {project.code}
                           </span>
                           <Link
                             href={`/projects/${project.id}`}
-                            className="font-semibold text-foreground hover:underline hover:text-sky-500"
+                            className="font-medium text-foreground hover:underline"
                           >
                             {project.name}
                           </Link>
                           <Badge
                             variant="outline"
-                            className={getStatusBadgeClass(project.status) + ' text-[10px] py-0'}
+                            className={getStatusBadgeClass(project.status) + ' text-[9px] py-0 px-1.5'}
                           >
                             {project.status}
                           </Badge>
                         </div>
-                        <span className="text-muted-foreground text-[11px]">
-                          {formatDate(project.startDate)} → {formatDate(project.endDate)} ({duration} days)
+                        <span className="text-muted-foreground text-[10px]">
+                          {formatDate(project.startDate)} → {formatDate(project.endDate)} ({duration}d)
                         </span>
                       </div>
 
-                      {/* Gantt Bar Background Track */}
-                      <div className="h-8 w-full bg-secondary/40 rounded-xl relative overflow-hidden border border-border/40">
-                        {/* Task Schedule Bar */}
+                      {/* Track */}
+                      <div className="h-6 w-full bg-muted/40 dark:bg-slate-900/60 rounded-md relative overflow-hidden border border-border dark:border-slate-800">
                         <div
-                          className={`absolute top-1 bottom-1 rounded-lg border flex items-center px-2 text-xs font-semibold overflow-hidden transition-all duration-300 ${getBarBg(
+                          className={`absolute top-0.5 bottom-0.5 rounded border flex items-center px-1.5 text-[10px] overflow-hidden transition-all duration-300 ${getBarBg(
                             project.status
                           )}`}
                           style={{
@@ -165,9 +137,7 @@ export default function TimelinePage() {
                             width: `${widthPct}%`,
                           }}
                         >
-                          <span className="truncate text-[11px] font-mono">
-                            {project.code}
-                          </span>
+                          <span className="truncate font-mono font-medium">{project.code}</span>
                         </div>
                       </div>
                     </div>

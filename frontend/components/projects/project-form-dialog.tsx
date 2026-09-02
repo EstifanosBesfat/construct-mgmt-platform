@@ -226,9 +226,26 @@ export function ProjectFormDialog({
               Status *
             </label>
             <Select {...register('status')} error={errors.status?.message}>
-              <option value="PLANNED">PLANNED (Upcoming)</option>
-              <option value="ONGOING">ONGOING (Active)</option>
-              <option value="COMPLETED">COMPLETED (Finished)</option>
+              {!isEditing ? (
+                // Only Planned or Ongoing when creating a new project
+                <>
+                  <option value="PLANNED">PLANNED (Upcoming)</option>
+                  <option value="ONGOING">ONGOING (Active in-progress)</option>
+                </>
+              ) : projectToEdit?.status === 'PLANNED' ? (
+                <>
+                  <option value="PLANNED">PLANNED (Upcoming)</option>
+                  <option value="ONGOING">ONGOING (Active in-progress)</option>
+                  <option value="COMPLETED">COMPLETED (Finished)</option>
+                </>
+              ) : projectToEdit?.status === 'ONGOING' ? (
+                <>
+                  <option value="ONGOING">ONGOING (Active in-progress)</option>
+                  <option value="COMPLETED">COMPLETED (Finished)</option>
+                </>
+              ) : (
+                <option value="COMPLETED">COMPLETED (Finalized)</option>
+              )}
             </Select>
           </div>
         </div>
@@ -239,8 +256,9 @@ export function ProjectFormDialog({
           </Button>
           <Button
             type="submit"
-            variant="amber"
+            variant="default"
             isLoading={isSubmitting || createMutation.isPending || updateMutation.isPending}
+            className="font-semibold"
           >
             {isEditing ? 'Save Changes' : 'Create Project'}
           </Button>

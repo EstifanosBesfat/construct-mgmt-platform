@@ -15,10 +15,10 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
 
     const getColor = (pct: number) => {
       if (indicatorColor) return indicatorColor;
-      if (pct >= 100) return 'bg-emerald-500';
-      if (pct >= 70) return 'bg-sky-500';
-      if (pct >= 30) return 'bg-blue-500';
-      return 'bg-slate-400';
+      if (pct >= 100) return 'bg-emerald-600 dark:bg-emerald-500';
+      if (pct >= 70) return 'bg-[#EA580C] dark:bg-orange-500';
+      if (pct >= 30) return 'bg-blue-600 dark:bg-blue-500';
+      return 'bg-slate-400 dark:bg-slate-500';
     };
 
     return (
@@ -32,7 +32,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         <div
           ref={ref}
           className={cn(
-            'relative h-2.5 w-full overflow-hidden rounded-full bg-secondary/80',
+            'relative h-2.5 w-full overflow-hidden rounded-full bg-muted dark:bg-slate-800',
             className
           )}
           {...props}

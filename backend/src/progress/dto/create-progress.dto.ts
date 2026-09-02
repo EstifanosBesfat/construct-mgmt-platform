@@ -42,7 +42,8 @@ export class CreateProgressDto {
   description: string;
 
   @ApiProperty({
-    description: 'Completion percentage for the project at this date. 0 to 100.',
+    description:
+      'Completion percentage for the project at this date. 0 to 100.',
     example: 71,
     minimum: 0,
     maximum: 100,

@@ -2,15 +2,13 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 import {
   Building2,
   Boxes,
   TrendingUp,
   AlertTriangle,
   ArrowRight,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Plus,
   BarChart3,
   PieChart as PieChartIcon,
 } from 'lucide-react';
@@ -27,7 +25,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -35,290 +33,272 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { useDashboardSummary } from '@/hooks/use-dashboard';
 import { formatCurrency, formatNumber, formatDate, getStatusBadgeClass } from '@/lib/utils';
-import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
-import { StockInDialog } from '@/components/inventory/stock-in-dialog';
-import { StockOutDialog } from '@/components/inventory/stock-out-dialog';
+import { ProjectPerformanceItem, RecentTransactionItem, RecentProgressItem } from '@/types';
+import { TableSortHeader, useTableSort } from '@/components/ui/table-sort';
 
-const STATUS_COLORS = {
-  PLANNED: '#94a3b8',
-  ONGOING: '#3b82f6',
-  COMPLETED: '#10b981',
-};
+// Avatar initial helper
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 
 export default function DashboardPage() {
-  const { data: summary, isLoading, isError } = useDashboardSummary();
-  const [newProjectOpen, setNewProjectOpen] = React.useState(false);
-  const [stockInOpen, setStockInOpen] = React.useState(false);
-  const [stockOutOpen, setStockOutOpen] = React.useState(false);
+  const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
 
-  if (isLoading) {
+  const { sortKey, sortDirection, toggleSort, sortItems } = useTableSort<ProjectPerformanceItem>(
+    null,
+    null,
+    {
+      budget: (p) => Number(p.budget),
+      boqValue: (p) => Number(p.boqValue),
+      latestProgress: (p) => Number(p.latestProgress || 0),
+    }
+  );
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  if (isError && !summary) {
     return (
       <div className="space-y-4">
-        <PageHeader
-          title="Dashboard"
-          description="Projects, inventory, and progress at a glance."
-        />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Skeleton className="h-64 lg:col-span-2 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
-        </div>
+        <PageHeader title="Executive Overview" />
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="p-8 text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
+            <h3 className="font-semibold text-sm text-foreground">Unable to connect to the backend server</h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              The dashboard could not load data from the backend API. Please make sure the backend is running at{' '}
+              <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">http://localhost:4002</code>.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry Connection
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (isError || !summary) {
+  if (isLoading || !summary) {
     return (
       <div className="space-y-4">
-        <PageHeader
-          title="Dashboard"
-          description="Projects, inventory, and progress at a glance."
-        />
-        <Card className="glass-panel">
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Dashboard data could not be loaded. Check that the API is running on port 4000.
-          </CardContent>
-        </Card>
+        <PageHeader title="Executive Overview" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-64 lg:col-span-2 rounded-lg" />
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
       </div>
     );
   }
 
   const { projects, inventory, projectPerformance, recentTransactions, recentProgress } = summary;
+  const sortedPerformance = sortItems(projectPerformance);
 
-  // Chart 1: Project Status Breakdown
+  // Chart 1: Project Status Breakdown with theme-aware high contrast
   const statusPieData = [
-    { name: 'Planned', value: projects.planned, color: STATUS_COLORS.PLANNED },
-    { name: 'Ongoing', value: projects.ongoing, color: STATUS_COLORS.ONGOING },
-    { name: 'Completed', value: projects.completed, color: STATUS_COLORS.COMPLETED },
+    { name: 'Planned', value: projects.planned, color: isDark ? '#94A3B8' : '#64748B' },
+    { name: 'Ongoing', value: projects.ongoing, color: isDark ? '#FB923C' : '#EA580C' },
+    { name: 'Completed', value: projects.completed, color: isDark ? '#4ADE80' : '#16A34A' },
   ].filter((item) => item.value > 0);
 
   // Chart 2: Budget vs BOQ Value (Top 5 Projects)
-  const budgetVsBoqData = projectPerformance.slice(0, 5).map((p) => ({
+  const budgetVsBoqData = projectPerformance.slice(0, 5).map((p: ProjectPerformanceItem) => ({
     code: p.code,
-    name: p.name.length > 18 ? p.name.slice(0, 18) + '...' : p.name,
+    name: p.name.length > 16 ? p.name.slice(0, 16) + '...' : p.name,
     budget: Number(p.budget),
     boqValue: Number(p.boqValue),
   }));
 
   const totalPortfolioBudget = projectPerformance.reduce(
-    (acc, p) => acc + Number(p.budget),
+    (acc: number, p: ProjectPerformanceItem) => acc + Number(p.budget),
     0
   );
   const totalPortfolioBoq = projectPerformance.reduce(
-    (acc, p) => acc + Number(p.boqValue),
+    (acc: number, p: ProjectPerformanceItem) => acc + Number(p.boqValue),
     0
   );
 
   return (
     <div className="space-y-4">
+      {/* Top Header */}
       <PageHeader
-        title="Dashboard"
-        description="Projects, inventory, and progress at a glance."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setStockInOpen(true)}
-              className="rounded-xl"
-            >
-              <ArrowDownLeft className="h-4 w-4 mr-1.5 text-emerald-500" />
-              Stock In
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setStockOutOpen(true)}
-              className="rounded-xl"
-            >
-              <ArrowUpRight className="h-4 w-4 mr-1.5 text-rose-500" />
-              Stock Out
-            </Button>
-            <Button
-              variant="amber"
-              size="sm"
-              onClick={() => setNewProjectOpen(true)}
-              className="rounded-xl shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              New Project
-            </Button>
-          </div>
-        }
+        title="Executive Overview"
+        description="Real-time portfolio budget, measured rates, and inventory status."
       />
 
-      {/* KPI Cards Row */}
+      {/* KPI Cards Row (Clean, Compact, No Bloat) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Projects */}
-        <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-24 w-24 bg-blue-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Projects
-            </CardTitle>
-            <div className="p-2 rounded-xl bg-blue-500/15 text-blue-500">
+        <Card>
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Total Projects
+              </p>
+              <div className="mt-1 flex items-baseline space-x-2">
+                <span className="text-xl font-bold text-foreground">
+                  {projects.total}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  ({projects.ongoing} active)
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {projects.completed} completed • {projects.planned} planned
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-md bg-orange-50 text-[#EA580C] dark:bg-orange-950/50 dark:text-orange-400 flex items-center justify-center">
               <Building2 className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {projects.total}
-            </div>
-            <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center text-blue-500 font-semibold">
-                {projects.ongoing} ongoing
-              </span>
-              <span>•</span>
-              <span className="text-emerald-500 font-semibold">{projects.completed} done</span>
-              <span>•</span>
-              <span>{projects.planned} planned</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Card 2: Materials & Inventory */}
-        <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-24 w-24 bg-sky-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Material Catalogue
-            </CardTitle>
-            <div className="p-2 rounded-xl bg-sky-500/15 text-sky-500">
-              <Boxes className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {inventory.totalMaterials}
-            </div>
-            <div className="mt-2 flex items-center space-x-2 text-xs">
-              {inventory.lowStockCount > 0 ? (
-                <span className="inline-flex items-center font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  {inventory.lowStockCount} below minimum
+        <Card>
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Materials Catalogue
+              </p>
+              <div className="mt-1 flex items-baseline space-x-2">
+                <span className="text-xl font-bold text-foreground">
+                  {inventory.totalMaterials}
                 </span>
-              ) : (
-                <span className="text-emerald-500 font-medium">All stock levels healthy</span>
-              )}
+                <span className="text-[11px] text-muted-foreground">items</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {inventory.lowStockCount > 0 ? (
+                  <span className="text-orange-600 dark:text-orange-400 font-medium">
+                    ⚠️ {inventory.lowStockCount} below minimum
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Healthy inventory</span>
+                )}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-md bg-muted text-muted-foreground flex items-center justify-center">
+              <Boxes className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
 
         {/* Card 3: Portfolio Budget */}
-        <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-24 w-24 bg-emerald-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Budget
-            </CardTitle>
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
+        <Card>
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Total Budget
+              </p>
+              <div className="mt-1 flex items-baseline space-x-1.5">
+                <span className="text-lg font-bold text-foreground tracking-tight">
+                  {formatNumber(totalPortfolioBudget, 0)}
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  ETB
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Authorized contract value
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 flex items-center justify-center">
               <BarChart3 className="h-4 w-4" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div
-              className="flex items-baseline flex-wrap gap-x-1.5"
-              title={formatCurrency(totalPortfolioBudget)}
-            >
-              <span className="text-xl font-bold text-foreground tracking-tight">
-                {formatNumber(totalPortfolioBudget, 2)}
-              </span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                ETB
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Combined value of all projects
-            </p>
           </CardContent>
         </Card>
 
         {/* Card 4: Total BOQ Value */}
-        <Card className="glass-panel glass-panel-hover border-border/80 relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-24 w-24 bg-purple-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total BOQ Committed
-            </CardTitle>
-            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-500">
+        <Card>
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Total BOQ Value
+              </p>
+              <div className="mt-1 flex items-baseline space-x-1.5">
+                <span className="text-lg font-bold text-foreground tracking-tight">
+                  {formatNumber(totalPortfolioBoq, 0)}
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  ETB
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Measured line items sum
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 flex items-center justify-center">
               <TrendingUp className="h-4 w-4" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div
-              className="flex items-baseline flex-wrap gap-x-1.5"
-              title={formatCurrency(totalPortfolioBoq)}
-            >
-              <span className="text-xl font-bold text-foreground tracking-tight">
-                {formatNumber(totalPortfolioBoq, 2)}
-              </span>
-              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md">
-                ETB
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Sum of measured rate items
-            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Visual Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Visual Charts Row (Theme-Aware High Contrast) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Budget vs BOQ Value Bar Chart */}
-        <Card className="lg:col-span-2 glass-panel border-border/80">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center justify-between">
-              <span>Budget vs BOQ</span>
-              <span className="text-xs font-normal text-muted-foreground">Top projects</span>
-            </CardTitle>
-            <CardDescription>
-              Authorized budget compared with measured BOQ value.
-            </CardDescription>
+        <Card className="lg:col-span-2">
+          <CardHeader className="py-2.5 px-3.5">
+            <CardTitle>Budget vs. BOQ Value Comparison</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3.5">
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={budgetVsBoqData}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-                  <XAxis
-                    dataKey="code"
-                    tick={{ fontSize: 12 }}
-                    stroke="#94a3b8"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" opacity={isDark ? 0.15 : 0.25} stroke={isDark ? '#475569' : '#CBD5E1'} vertical={false} />
+                  <XAxis dataKey="code" tick={{ fontSize: 11, fill: isDark ? '#94A3B8' : '#64748B' }} stroke={isDark ? '#475569' : '#CBD5E1'} />
                   <YAxis
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 10, fill: isDark ? '#94A3B8' : '#64748B' }}
+                    stroke={isDark ? '#475569' : '#CBD5E1'}
                     tickFormatter={(val) => `${(val / 1_000_000).toFixed(0)}M`}
                   />
                   <Tooltip
                     formatter={(value: any) => [formatCurrency(value), '']}
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '0.75rem',
-                      fontSize: '12px',
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? '#334155' : '#E2E8F0',
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                      borderRadius: '0.375rem',
+                      fontSize: '11px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                    }}
+                    itemStyle={{
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                    }}
+                    labelStyle={{
+                      color: isDark ? '#94A3B8' : '#64748B',
+                      fontWeight: 600,
                     }}
                   />
-                  <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                  <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: '11px' }} />
                   <Bar
                     dataKey="budget"
                     name="Authorized Budget"
-                    fill="#0284c7"
-                    radius={[6, 6, 0, 0]}
+                    fill={isDark ? '#60A5FA' : '#1E293B'}
+                    radius={[3, 3, 0, 0]}
                   />
                   <Bar
                     dataKey="boqValue"
                     name="BOQ Total Value"
-                    fill="#38bdf8"
-                    radius={[6, 6, 0, 0]}
+                    fill={isDark ? '#FB923C' : '#EA580C'}
+                    radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -327,27 +307,21 @@ export default function DashboardPage() {
         </Card>
 
         {/* Project Status Pie Chart */}
-        <Card className="glass-panel border-border/80 flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center space-x-2">
-              <PieChartIcon className="h-4 w-4 text-sky-500" />
-              <span>Project status</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Current project portfolio lifecycle state.
-            </CardDescription>
+        <Card>
+          <CardHeader className="py-2.5 px-3.5">
+            <CardTitle>Project Status Breakdown</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center">
-            <div className="h-56 w-full">
+          <CardContent className="p-3.5 flex flex-col items-center justify-between">
+            <div className="h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={statusPieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={4}
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={3}
                     dataKey="value"
                   >
                     {statusPieData.map((entry, index) => (
@@ -356,28 +330,32 @@ export default function DashboardPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '0.75rem',
-                      fontSize: '12px',
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? '#334155' : '#E2E8F0',
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                      borderRadius: '0.375rem',
+                      fontSize: '11px',
+                    }}
+                    itemStyle={{
+                      color: isDark ? '#F8FAFC' : '#0F172A',
                     }}
                   />
-                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: '11px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-full grid grid-cols-3 gap-2 text-center text-xs mt-2 pt-3 border-t border-border">
+            <div className="w-full grid grid-cols-3 gap-1 text-center text-xs pt-2 border-t border-border mt-1">
               <div>
-                <p className="text-muted-foreground text-[10px] uppercase">Planned</p>
-                <p className="font-bold text-slate-500">{projects.planned}</p>
+                <p className="text-muted-foreground text-[10px]">Planned</p>
+                <p className="font-semibold text-[#64748B] dark:text-[#94A3B8]">{projects.planned}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-[10px] uppercase">Ongoing</p>
-                <p className="font-bold text-blue-500">{projects.ongoing}</p>
+                <p className="text-muted-foreground text-[10px]">Ongoing</p>
+                <p className="font-semibold text-[#EA580C] dark:text-[#FB923C]">{projects.ongoing}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-[10px] uppercase">Completed</p>
-                <p className="font-bold text-emerald-500">{projects.completed}</p>
+                <p className="text-muted-foreground text-[10px]">Completed</p>
+                <p className="font-semibold text-emerald-600 dark:text-emerald-400">{projects.completed}</p>
               </div>
             </div>
           </CardContent>
@@ -385,89 +363,135 @@ export default function DashboardPage() {
       </div>
 
       {/* Project Performance Table */}
-      <Card className="glass-panel border-border/80">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-semibold">Project performance</CardTitle>
-            <CardDescription>
-              Budget, BOQ value, progress, and status.
-            </CardDescription>
-          </div>
-          <Link href="/projects">
-            <Button variant="ghost" size="sm" className="text-xs text-sky-500 hover:text-sky-600">
-              View All Projects
-              <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3.5">
+          <CardTitle>Active Projects & Progress</CardTitle>
+          <Link href="/projects" className="text-xs text-muted-foreground hover:text-foreground flex items-center font-medium">
+            View All Projects
+            <ArrowRight className="h-3 w-3 ml-1" />
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase text-muted-foreground bg-muted/40 border-b border-border">
+            <table className="w-full text-xs text-left">
+              <thead className="text-[11px] uppercase text-muted-foreground bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Code</th>
-                  <th className="px-4 py-3 font-semibold">Project Name</th>
-                  <th className="px-4 py-3 font-semibold">Client</th>
-                  <th className="px-4 py-3 font-semibold">Budget</th>
-                  <th className="px-4 py-3 font-semibold">BOQ Value</th>
-                  <th className="px-4 py-3 font-semibold">Progress</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold text-right">Action</th>
+                  <TableSortHeader
+                    label="Project"
+                    sortKey="name"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <TableSortHeader
+                    label="Code"
+                    sortKey="code"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <TableSortHeader
+                    label="Client"
+                    sortKey="clientName"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <TableSortHeader
+                    label="Location"
+                    sortKey="location"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <TableSortHeader
+                    label="Budget"
+                    sortKey="budget"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <TableSortHeader
+                    label="BOQ Value"
+                    sortKey="boqValue"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <TableSortHeader
+                    label="Progress"
+                    sortKey="latestProgress"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <TableSortHeader
+                    label="Status"
+                    sortKey="status"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                  <th className="px-3 py-2 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {projectPerformance.slice(0, 5).map((project) => {
+                {sortedPerformance.slice(0, 5).map((project: ProjectPerformanceItem) => {
                   const progressPct = Number(project.latestProgress || 0);
+                  const initials = getInitials(project.name);
+
                   return (
-                    <tr
-                      key={project.id}
-                      className="hover:bg-muted/30 transition-colors group"
-                    >
-                      <td className="px-4 py-3 font-mono font-bold text-xs text-sky-500">
+                    <tr key={project.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-6 w-6 rounded-md bg-muted dark:bg-slate-800 text-muted-foreground font-semibold flex items-center justify-center text-[10px] shrink-0">
+                            {initials}
+                          </div>
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className="font-medium text-foreground hover:underline"
+                          >
+                            {project.name}
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-muted-foreground">
                         {project.code}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-foreground">
-                        <Link
-                          href={`/projects/${project.id}`}
-                          className="hover:underline hover:text-sky-500"
-                        >
-                          {project.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      <td className="px-3 py-2 text-muted-foreground">
                         {project.clientName}
                       </td>
-                      <td className="px-4 py-3 text-xs font-medium">
-                        {formatCurrency(project.budget)}
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {project.location}
                       </td>
-                      <td className="px-4 py-3 text-xs font-medium text-muted-foreground">
-                        {formatCurrency(project.boqValue)}
+                      <td className="px-3 py-2 text-right font-medium">
+                        {formatNumber(project.budget, 0)} <span className="text-[10px] text-muted-foreground">ETB</span>
                       </td>
-                      <td className="px-4 py-3 min-w-[140px]">
+                      <td className="px-3 py-2 text-right text-muted-foreground">
+                        {formatNumber(project.boqValue, 0)} <span className="text-[10px]">ETB</span>
+                      </td>
+                      <td className="px-3 py-2 min-w-[100px]">
                         <div className="flex items-center space-x-2">
-                          <Progress value={progressPct} className="h-2 flex-1" />
-                          <span className="text-xs font-semibold w-8 text-right">
+                          <Progress value={progressPct} className="h-1.5 flex-1" />
+                          <span className="text-[11px] font-medium w-7 text-right">
                             {progressPct}%
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <Badge
                           variant="outline"
-                          className={getStatusBadgeClass(project.status)}
+                          className={getStatusBadgeClass(project.status) + ' text-[10px] py-0'}
                         >
                           {project.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-3 py-2 text-right">
                         <Link href={`/projects/${project.id}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-muted-foreground group-hover:text-sky-500"
-                          >
+                          <Button variant="outline" size="xs">
                             Details
-                            <ArrowRight className="h-3 w-3 ml-1" />
                           </Button>
                         </Link>
                       </td>
@@ -480,61 +504,41 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Bottom Row: Recent Activity Feeds */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent Stock Transactions Feed */}
-        <Card className="glass-panel border-border/80">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-bold flex items-center space-x-2">
-                <Boxes className="h-4 w-4 text-sky-500" />
-                <span>Recent Inventory Movements</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Latest stock-in receipts and project material issues.
-              </CardDescription>
-            </div>
-            <Link href="/inventory">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-sky-500">
-                View History
-              </Button>
+      {/* Bottom Feeds */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Recent Stock Transactions */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3.5">
+            <CardTitle>Recent Stock Movements</CardTitle>
+            <Link href="/inventory" className="text-xs text-muted-foreground hover:text-foreground font-medium">
+              View All
             </Link>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border/60 hover:border-border transition-colors text-xs"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`p-2 rounded-lg ${
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {recentTransactions.slice(0, 4).map((tx: RecentTransactionItem) => (
+                <div key={tx.id} className="flex items-center justify-between p-2.5 text-xs hover:bg-muted/30">
+                  <div className="flex items-center space-x-2.5">
+                    <span
+                      className={`h-5 w-5 rounded-md flex items-center justify-center text-[11px] font-bold ${
                         tx.type === 'STOCK_IN'
-                          ? 'bg-emerald-500/15 text-emerald-500'
-                          : 'bg-rose-500/15 text-rose-500'
+                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                          : 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400'
                       }`}
                     >
-                      {tx.type === 'STOCK_IN' ? (
-                        <ArrowDownLeft className="h-3.5 w-3.5" />
-                      ) : (
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                      )}
-                    </div>
+                      {tx.type === 'STOCK_IN' ? '+' : '-'}
+                    </span>
                     <div>
-                      <div className="font-semibold text-foreground">
-                        {tx.materialName} ({tx.materialCode})
-                      </div>
-                      <p className="text-muted-foreground text-[11px]">
-                        Ref: <span className="font-mono">{tx.reference}</span> •{' '}
-                        {tx.projectCode ? `Issued to ${tx.projectCode}` : 'Supplier Receipt'}
+                      <p className="font-medium text-foreground">{tx.materialName}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Ref: {tx.reference} • {tx.projectCode ? tx.projectCode : 'Central Warehouse'}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <span
-                      className={`font-bold ${
-                        tx.type === 'STOCK_IN' ? 'text-emerald-500' : 'text-rose-500'
+                      className={`font-semibold ${
+                        tx.type === 'STOCK_IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                       }`}
                     >
                       {tx.type === 'STOCK_IN' ? '+' : '-'}
@@ -543,78 +547,41 @@ export default function DashboardPage() {
                     <p className="text-[10px] text-muted-foreground">{formatDate(tx.date)}</p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-xs text-muted-foreground py-4 text-center">
-                No inventory transactions recorded yet.
-              </p>
-            )}
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Recent Milestone Progress Feed */}
-        <Card className="glass-panel border-border/80">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-bold flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-                <span>Recent Milestone Updates</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Field progress reports submitted by project managers.
-              </CardDescription>
-            </div>
-            <Link href="/progress">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-sky-500">
-                View Progress
-              </Button>
+        {/* Recent Milestone Updates */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3.5">
+            <CardTitle>Recent Milestone Updates</CardTitle>
+            <Link href="/progress" className="text-xs text-muted-foreground hover:text-foreground font-medium">
+              View All
             </Link>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {recentProgress.length > 0 ? (
-              recentProgress.map((pr) => (
-                <div
-                  key={pr.id}
-                  className="p-3 rounded-xl bg-background/50 border border-border/60 hover:border-border transition-colors text-xs space-y-1.5"
-                >
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {recentProgress.slice(0, 4).map((pr: RecentProgressItem) => (
+                <div key={pr.id} className="p-2.5 text-xs space-y-1 hover:bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground flex items-center space-x-1.5">
-                      <span className="text-sky-500 font-mono">[{pr.projectCode}]</span>
-                      <span>{pr.projectName}</span>
+                    <span className="font-medium text-foreground">
+                      <span className="text-muted-foreground font-mono mr-1.5">[{pr.projectCode}]</span>
+                      {pr.projectName}
                     </span>
-                    <Badge variant="success" className="font-bold">
-                      {pr.percentage}% Complete
+                    <Badge variant="success" className="text-[10px]">
+                      {pr.percentage}%
                     </Badge>
                   </div>
-                  <p className="text-muted-foreground text-[11px]">{pr.description}</p>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/40">
-                    <span>{formatDate(pr.date)}</span>
-                    {pr.notes && <span className="italic truncate max-w-xs">{pr.notes}</span>}
-                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">{pr.description}</p>
+                  <p className="text-[10px] text-muted-foreground/80">{formatDate(pr.date)}</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-xs text-muted-foreground py-4 text-center">
-                No progress milestones logged yet.
-              </p>
-            )}
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Dialog Modals */}
-      <ProjectFormDialog
-        isOpen={newProjectOpen}
-        onClose={() => setNewProjectOpen(false)}
-      />
-      <StockInDialog
-        isOpen={stockInOpen}
-        onClose={() => setStockInOpen(false)}
-      />
-      <StockOutDialog
-        isOpen={stockOutOpen}
-        onClose={() => setStockOutOpen(false)}
-      />
     </div>
   );
 }

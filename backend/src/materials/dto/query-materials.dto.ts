@@ -1,6 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 export enum MaterialSortField {
@@ -62,6 +68,8 @@ export class QueryMaterialsDto extends PaginationQueryDto {
     default: MaterialSortOrder.DESC,
   })
   @IsOptional()
-  @IsEnum(MaterialSortOrder, { message: 'sortOrder must be either asc or desc' })
+  @IsEnum(MaterialSortOrder, {
+    message: 'sortOrder must be either asc or desc',
+  })
   sortOrder?: MaterialSortOrder;
 }

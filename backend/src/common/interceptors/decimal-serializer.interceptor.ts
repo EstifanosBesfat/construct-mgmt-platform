@@ -20,7 +20,10 @@ import { map } from 'rxjs/operators';
  */
 @Injectable()
 export class DecimalSerializerInterceptor implements NestInterceptor {
-  intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  intercept(
+    _context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<unknown> {
     return next.handle().pipe(map((data) => this.serialize(data)));
   }
 
