@@ -39,7 +39,9 @@ export function ForgotPasswordDialog({
   const [isLoading, setIsLoading] = React.useState(false);
   const [resendCountdown, setResendCountdown] = React.useState(60);
 
-  // Reset dialog state on open
+  const [otpToken, setOtpToken] = React.useState('');
+
+  // Reset form on open
   React.useEffect(() => {
     if (isOpen) {
       setStep(1);
@@ -47,6 +49,7 @@ export function ForgotPasswordDialog({
       setOtp('');
       setNewPassword('');
       setConfirmPassword('');
+      setOtpToken('');
       setIsLoading(false);
     }
   }, [isOpen]);
@@ -82,6 +85,10 @@ export function ForgotPasswordDialog({
       if (!res.ok) {
         toast.error(data.error || 'Failed to send reset code');
         return;
+      }
+
+      if (data.otpToken) {
+        setOtpToken(data.otpToken);
       }
 
       setStep(2);
@@ -121,6 +128,7 @@ export function ForgotPasswordDialog({
           email: email.trim(),
           code: otp.trim(),
           newPassword: newPassword.trim(),
+          otpToken,
         }),
       });
       const data = await res.json();

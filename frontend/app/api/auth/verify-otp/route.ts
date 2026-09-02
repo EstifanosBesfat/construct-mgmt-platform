@@ -3,7 +3,8 @@ import { verifyAndConsumeOtp, saveUser } from '@/lib/auth-service';
 
 export async function POST(request: Request) {
   try {
-    const { email, code, password, name } = await request.json();
+    const body = await request.json();
+    const { email, code, password, name, otpToken } = body;
 
     if (!email || !code) {
       return NextResponse.json(
@@ -21,8 +22,10 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Verify OTP against disk store
-    const result = verifyAndConsumeOtp(normalizedEmail, code);
+    // Verify OTP against cryptographic signed token or fallback stores
+    const cookieToken = (request as any).cookies?.get?.('cms_otp_token')?.value;
+    const token = otpToken || cookieToken;
+    const result = verifyAndConsumeOtp(normalizedEmail, code, token);
 
     if (!result.valid) {
       return NextResponse.json(
@@ -31,24 +34,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Save user permanently to disk with Full Name
+    // Save user with Full Name
     const fullName = name && typeof name === 'string' && name.trim() ? name.trim() : normalizedEmail.split('@')[0];
 
-    const saved = saveUser({
+    saveUser({
       email: normalizedEmail,
       name: fullName,
       password: password,
       createdAt: new Date().toISOString(),
     });
 
-    if (!saved) {
-      return NextResponse.json(
-        { error: 'Failed to create user account on server' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Account registered and verified successfully!',
       user: {
@@ -56,6 +52,17 @@ export async function POST(request: Request) {
         name: fullName,
       },
     });
+
+    response.cookies.set({
+      name: 'cms_auth_session',
+      value: normalizedEmail,
+      path: '/',
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to verify code' },

@@ -43,7 +43,9 @@ export function RegisterDialog({
   const [isLoading, setIsLoading] = React.useState(false);
   const [resendCountdown, setResendCountdown] = React.useState(60);
 
-  // Reset dialog state on open
+  const [otpToken, setOtpToken] = React.useState('');
+
+  // Reset form when modal opens
   React.useEffect(() => {
     if (isOpen) {
       setStep(1);
@@ -51,6 +53,7 @@ export function RegisterDialog({
       setEmail('');
       setOtp('');
       setPassword('');
+      setOtpToken('');
       setIsLoading(false);
     }
   }, [isOpen]);
@@ -92,6 +95,10 @@ export function RegisterDialog({
         return;
       }
 
+      if (data.otpToken) {
+        setOtpToken(data.otpToken);
+      }
+
       setStep(2);
       setResendCountdown(60);
       toast.success('Verification code sent!', {
@@ -126,6 +133,7 @@ export function RegisterDialog({
           email: email.trim(),
           code: otp.trim(),
           password,
+          otpToken,
         }),
       });
 

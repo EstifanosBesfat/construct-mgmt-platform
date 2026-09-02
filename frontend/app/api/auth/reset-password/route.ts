@@ -3,7 +3,8 @@ import { verifyAndConsumeOtp, resetPassword, findUserByEmail } from '@/lib/auth-
 
 export async function POST(request: Request) {
   try {
-    const { email, code, newPassword } = await request.json();
+    const body = await request.json();
+    const { email, code, newPassword, otpToken } = body;
 
     if (!email || !code || !newPassword) {
       return NextResponse.json(
@@ -21,8 +22,10 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Verify OTP against disk store
-    const result = verifyAndConsumeOtp(normalizedEmail, code);
+    // Verify OTP against cryptographic signed token or fallback stores
+    const cookieToken = (request as any).cookies?.get?.('cms_otp_token')?.value;
+    const token = otpToken || cookieToken;
+    const result = verifyAndConsumeOtp(normalizedEmail, code, token);
 
     if (!result.valid) {
       return NextResponse.json(

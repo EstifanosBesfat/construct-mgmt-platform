@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findUserByEmail, saveOtp } from '@/lib/auth-service';
+import { findUserByEmail, saveOtp, generateSignedOtp } from '@/lib/auth-service';
 
 export async function POST(request: Request) {
   try {
@@ -28,9 +28,11 @@ export async function POST(request: Request) {
 
     // Generate secure 6-digit OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
 
-    // Store in permanent disk store with 10-minute expiration
-    saveOtp(normalizedEmail, otpCode, Date.now() + 10 * 60 * 1000);
+    // Store locally and generate cryptographic signed token
+    saveOtp(normalizedEmail, otpCode, expiresAt);
+    const signedToken = generateSignedOtp(normalizedEmail, otpCode, expiresAt);
 
     const brevoApiKey = process.env.BREVO_API_KEY || '';
 
@@ -84,10 +86,22 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Verification code sent to ${normalizedEmail}`,
+      otpToken: signedToken,
     });
+
+    response.cookies.set({
+      name: 'cms_otp_token',
+      value: signedToken,
+      path: '/',
+      httpOnly: false,
+      maxAge: 600,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Send OTP Error:', error);
     return NextResponse.json(
