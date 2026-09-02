@@ -8,7 +8,7 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC.svg)](https://tailwindcss.com/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg)](https://www.docker.com/)
 
-A full-stack, enterprise-grade **Construction Management System (CMS)** built to provide construction companies and site engineers with unified control over projects, Bill of Quantities (BOQ), warehouse inventory management, and field milestone progress tracking.
+A full-stack, enterprise-grade **Construction Management System (CMS)** built to provide construction companies and site engineers with unified control over projects, Bill of Quantities (BOQ), warehouse inventory, and field milestone progress tracking.
 
 ---
 
@@ -193,9 +193,11 @@ docker compose down
 
 | Service | URL | Description |
 |---|---|---|
-| **Web Application** | [http://localhost:3000](http://localhost:3000) | Next.js Frontend Interface |
-| **API Base URL** | [http://localhost:4002](http://localhost:4002) | NestJS REST API |
-| **Swagger API Docs** | [http://localhost:4002/api/docs](http://localhost:4002/api/docs) | Interactive OpenAPI Documentation |
+| **Web Application (Local)** | [http://localhost:3000](http://localhost:3000) | Next.js Frontend Interface |
+| **Web Application (Vercel)** | [https://concms.vercel.app/](https://concms.vercel.app/) | Production Frontend Deployment |
+| **API Base URL (Local)** | [http://localhost:4002](http://localhost:4002) | NestJS REST API |
+| **Swagger API Docs (Local)** | [http://localhost:4002/api/docs](http://localhost:4002/api/docs) | Interactive OpenAPI Documentation |
+| **Swagger API Docs (Vercel)** | [https://construct-cms-backend.vercel.app/api/docs](https://construct-cms-backend.vercel.app/api/docs) | Production API Documentation |
 | **Prisma Studio** | [http://localhost:5555](http://localhost:5555) | Database GUI (`npm run db:studio`) |
 
 ---
@@ -219,7 +221,7 @@ cd frontend && npx tsc --noEmit
 
 ## 📖 API Documentation (Swagger)
 
-All REST endpoints are documented with Swagger/OpenAPI. Visit **[http://localhost:4002/api/docs](http://localhost:4002/api/docs)** to test endpoints interactively:
+All REST endpoints are documented with Swagger/OpenAPI. Visit **[http://localhost:4002/api/docs](http://localhost:4002/api/docs)** (local) or **[https://construct-cms-backend.vercel.app/api/docs](https://construct-cms-backend.vercel.app/api/docs)** (production) to test endpoints interactively:
 
 * **Projects**: `GET /projects`, `POST /projects`, `GET /projects/:id`, `PATCH /projects/:id`, `DELETE /projects/:id`
 * **BOQ**: `GET /projects/:projectId/boq`, `POST /projects/:projectId/boq`, `PATCH /projects/:projectId/boq/:id`, `DELETE /projects/:projectId/boq/:id`
